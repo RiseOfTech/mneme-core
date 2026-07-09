@@ -3,6 +3,7 @@ package io.github.ifamneme.mneme_core;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -77,14 +78,7 @@ class CardEndpointIntegrationTest extends AbstractIntegrationTest {
 	}
 
 	@Test
-	void getUnknownIdReturns404() throws Exception {
-		mockMvc.perform(
-				get("/v1/cards/" + UUID.randomUUID()).header(HttpHeaders.AUTHORIZATION, "Bearer " + OWNER_TOKEN))
-				.andExpect(status().isNotFound());
-	}
-
-	@Test
-	void getForeignCardReturns404() throws Exception {
+	void missingCardAndForeignCardReturnByteIdentical404Bodies() throws Exception {
 		String createBody = """
 				{"word":"word","translation":"translation","association":"association"}
 				""";
@@ -95,8 +89,23 @@ class CardEndpointIntegrationTest extends AbstractIntegrationTest {
 				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 		String id = objectMapper.readTree(createResponse).get("id").asString();
 
-		mockMvc.perform(get("/v1/cards/" + id).header(HttpHeaders.AUTHORIZATION, "Bearer " + OTHER_TOKEN))
-				.andExpect(status().isNotFound());
+		String missingCardBody = mockMvc
+				.perform(get("/v1/cards/" + UUID.randomUUID()).header(HttpHeaders.AUTHORIZATION,
+						"Bearer " + OWNER_TOKEN))
+				.andExpect(status().isNotFound())
+				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("CARD_NOT_FOUND"))
+				.andReturn().getResponse().getContentAsString();
+
+		String foreignCardBody = mockMvc
+				.perform(get("/v1/cards/" + id).header(HttpHeaders.AUTHORIZATION, "Bearer " + OTHER_TOKEN))
+				.andExpect(status().isNotFound())
+				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("CARD_NOT_FOUND"))
+				.andReturn().getResponse().getContentAsString();
+
+		assertThat(foreignCardBody).isEqualTo(missingCardBody);
+		assertThat(missingCardBody).doesNotContain(id);
 	}
 
 }

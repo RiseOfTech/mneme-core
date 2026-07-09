@@ -16,6 +16,7 @@ import io.github.ifamneme.mneme_core.domain.CardId;
 import io.github.ifamneme.mneme_core.domain.Image;
 import io.github.ifamneme.mneme_core.domain.Translation;
 import io.github.ifamneme.mneme_core.domain.UserId;
+import io.github.ifamneme.mneme_core.domain.Visibility;
 import io.github.ifamneme.mneme_core.domain.Word;
 
 @RestController
@@ -33,9 +34,9 @@ public class CardController implements CardApi {
 	@Override
 	public ResponseEntity<CardResponseDto> createCard(CreateCardRequestDto request, UserId userId) {
 		Image image = request.imageUrl() == null ? null : new Image(request.imageUrl());
+		Visibility visibility = request.visibility() == null ? null : request.visibility().toDomain();
 		CreateCardCommand command = new CreateCardCommand(userId, new Word(request.word()),
-				new Translation(request.translation()), new Association(request.association()), image,
-				request.visibility());
+				new Translation(request.translation()), new Association(request.association()), image, visibility);
 		Card card = createCardUseCase.create(command);
 		return ResponseEntity.status(HttpStatus.CREATED).body(CardResponseDto.from(card));
 	}

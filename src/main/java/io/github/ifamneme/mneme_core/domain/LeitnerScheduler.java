@@ -30,7 +30,7 @@ public final class LeitnerScheduler implements LeitnerStrategy {
 
 	@Override
 	public ReviewState next(ReviewState current, Grade grade, Instant now) {
-		LeitnerBox newBox = grade == Grade.CORRECT ? current.box().next() : LeitnerBox.first();
+		LeitnerBox newBox = grade == Grade.CORRECT ? current.box().next() : current.box().reset();
 		return new ReviewState(newBox, now.plus(intervalFor(newBox)));
 	}
 
