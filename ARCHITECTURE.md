@@ -278,6 +278,15 @@ particular front-end screen. Aggregation for a specific client (a "give me every
 for this screen" call) is a **BFF concern and lives outside the core** (e.g. in
 `mneme-web`), not in `mneme-core`.
 
+**Controller contract split.** Each resource is declared as a dedicated `*Api`
+interface (e.g. `MeApi`) carrying the method-level mapping annotations
+(`@GetMapping`, `@PostMapping`, …); the `*Controller` class (`@RestController`,
+class-level `@RequestMapping`) implements it. This separates the REST contract
+(method signature + mapping) from the handler logic, and gives later slices a
+single place to regenerate or diff the contract against an OpenAPI spec if that
+becomes useful. Spring resolves the mapping annotations through the interface, so
+no behavior changes — this is a structural convention, not a runtime concern.
+
 ---
 
 ## 8. Authentication
