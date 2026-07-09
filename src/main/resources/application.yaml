@@ -18,3 +18,5 @@ app:
       # environment (Spring's relaxed binding: APP_AUTH_TOKENS_<KEY>). No real secret
       # is committed here.
       demo-token: 00000000-0000-0000-0000-000000000001
+  leitner:
+    intervals: [1d, 3d, 7d, 16d, 30d]

@@ -22,6 +22,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+	implementation("org.springframework.boot:spring-boot-flyway")
 	implementation("org.flywaydb:flyway-core")
 	implementation("org.flywaydb:flyway-database-postgresql")
 	runtimeOnly("org.postgresql:postgresql")
@@ -36,4 +37,8 @@ dependencies {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	// Testcontainers-based tests each start their own Postgres container; running
+	// forks in parallel makes multiple containers start at once, which is flaky on
+	// resource-constrained local Docker VMs (e.g. Colima's default 2 CPU/2GB).
+	maxParallelForks = 1
 }

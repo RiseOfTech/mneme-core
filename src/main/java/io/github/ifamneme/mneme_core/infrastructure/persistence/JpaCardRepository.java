@@ -1,0 +1,34 @@
+package io.github.ifamneme.mneme_core.infrastructure.persistence;
+
+import java.util.Optional;
+
+import org.springframework.stereotype.Repository;
+
+import io.github.ifamneme.mneme_core.domain.Card;
+import io.github.ifamneme.mneme_core.domain.CardId;
+import io.github.ifamneme.mneme_core.domain.CardRepository;
+import io.github.ifamneme.mneme_core.domain.UserId;
+
+@Repository
+class JpaCardRepository implements CardRepository {
+
+	private final CardJpaRepository jpaRepository;
+	private final CardMapper mapper;
+
+	JpaCardRepository(CardJpaRepository jpaRepository, CardMapper mapper) {
+		this.jpaRepository = jpaRepository;
+		this.mapper = mapper;
+	}
+
+	@Override
+	public Card save(Card card) {
+		CardEntity saved = jpaRepository.save(mapper.toEntity(card));
+		return mapper.toDomain(saved);
+	}
+
+	@Override
+	public Optional<Card> findByIdAndOwner(CardId id, UserId owner) {
+		return jpaRepository.findByIdAndOwnerId(id.value(), owner.value()).map(mapper::toDomain);
+	}
+
+}
