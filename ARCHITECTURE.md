@@ -371,8 +371,10 @@ the right place:
 
 ## 12. Open / deferred (decide at implementation time, keep consistent)
 
-- **Error/response body shape** (e.g. `application/problem+json`) — pick one on the
-  first REST slice and keep it consistent across resources.
+- - **Error responses** — decided: `application/problem+json` (`ProblemDetail`) with a
+    custom `code` property carrying a machine-readable `ErrorCode`. `type` stays
+    `about:blank`. Domain invariant violations are not translated to `4xx`; they surface
+    as `500`, because reaching the domain with invalid data means edge validation failed.
 - **Validation placement** — field-level validation at the edge (Jakarta Validation on
   request DTOs) and/or via value-object construction in the domain. Decide per field;
   do not duplicate the same rule in both places without reason.
