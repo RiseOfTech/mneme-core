@@ -41,7 +41,20 @@ Run `./gradlew build` after any significant change to confirm it compiles and te
   OpenAPI/spec; external models are mapped to ours at the edge (anti-corruption layer).
 - Image generation is NOT part of this repo — it is a separate Phase 2 service
   (`mneme-ai`). In MVP an image is just an optional stored attribute (URL or upload).
-
+- Interfaces at behavioural boundaries. Every use case is an interface in
+  `application` with a single method, implemented by exactly one class. Controllers
+  and other adapters depend on the interface, never the implementation. Ports
+  (`CardRepository`, `LeitnerStrategy`) are interfaces declared by the inner layer.
+  Mappers are interfaces too.
+- No interfaces over data. Aggregates, value objects, JPA entities, DTOs, and
+  `@ConfigurationProperties` types stay concrete. An interface with no behaviour and
+  only one conceivable implementation adds noise, not abstraction.
+- Implementation naming: when the implementation is characterised by its mechanism,
+  the prefix names it (`JpaCardRepository`, `TokenAuthenticator`, `LeitnerScheduler`).
+  When there is nothing to say beyond "the one implementation", prefix with `Default`
+  (`DefaultCreateCardUseCase`, `DefaultCardMapper`).
+- The domain never calls `Instant.now()`. Time enters as a parameter or via an
+  injected `java.time.Clock`.
 ## Testing
 
 - JUnit 5 (Spring Boot default). Per the global standards: unit-test the domain and use

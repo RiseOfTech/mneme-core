@@ -1,0 +1,3 @@
+-- Baseline schema for the walking skeleton.
+-- No tables are needed yet — Card/Review tables arrive with the Card slice.
+-- This migration exists only to prove Flyway can run against the real database.
