@@ -1,10 +1,12 @@
 package io.github.ifamneme.mneme_core.infrastructure.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -74,7 +76,10 @@ class CardControllerTest {
 				.content("""
 						{"word":"   ","translation":"окружать","association":"сир, нас окружают"}
 						"""))
-				.andExpect(status().isBadRequest());
+				.andExpect(status().isBadRequest())
+				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+				.andExpect(jsonPath("$.errors.word").exists());
 	}
 
 	@Test
@@ -104,13 +109,35 @@ class CardControllerTest {
 		CardId id = CardId.newId();
 		when(getCardUseCase.get(eq(owner), eq(id))).thenThrow(new CardNotFoundException(id, owner));
 
-		mockMvc.perform(get("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer valid-token"))
-				.andExpect(status().isNotFound());
+		String body = mockMvc
+				.perform(get("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer valid-token"))
+				.andExpect(status().isNotFound())
+				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("CARD_NOT_FOUND"))
+				.andReturn().getResponse().getContentAsString();
+
+		assertThat(body).doesNotContain(id.value().toString());
 	}
 
 	@Test
 	void whenMissingAuthorizationHeader_returns401OnGet() throws Exception {
 		mockMvc.perform(get("/v1/cards/" + UUID.randomUUID())).andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void whenUseCaseThrowsUnexpectedException_returns500() throws Exception {
+		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
+		CardId id = CardId.newId();
+		when(getCardUseCase.get(eq(owner), eq(id))).thenThrow(new RuntimeException("boom: connection refused"));
+
+		String body = mockMvc
+				.perform(get("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer valid-token"))
+				.andExpect(status().isInternalServerError())
+				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+				.andReturn().getResponse().getContentAsString();
+
+		assertThat(body).doesNotContain("boom").doesNotContain("RuntimeException");
 	}
 
 }
