@@ -1,5 +1,6 @@
 package io.github.ifamneme.mneme_core.domain;
 
+import java.time.Instant;
 import java.util.Objects;
 
 public final class Review {
@@ -24,6 +25,11 @@ public final class Review {
 
 	public ReviewState state() {
 		return state;
+	}
+
+	public Review grade(Grade grade, LeitnerStrategy strategy, Instant now) {
+		ReviewState newState = strategy.next(this.state, grade, now);
+		return new Review(this.cardId, this.owner, newState);
 	}
 
 	@Override

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import io.github.ifamneme.mneme_core.domain.CardId;
 import io.github.ifamneme.mneme_core.domain.Review;
 import io.github.ifamneme.mneme_core.domain.ReviewRepository;
+import io.github.ifamneme.mneme_core.domain.UserId;
 
 @Repository
 class JpaReviewRepository implements ReviewRepository {
@@ -26,8 +27,8 @@ class JpaReviewRepository implements ReviewRepository {
 	}
 
 	@Override
-	public Optional<Review> findByCardId(CardId cardId) {
-		return jpaRepository.findByCardId(cardId.value()).map(mapper::toDomain);
+	public Optional<Review> findByCardIdAndOwner(CardId cardId, UserId owner) {
+		return jpaRepository.findByCardIdAndOwnerId(cardId.value(), owner.value()).map(mapper::toDomain);
 	}
 
 }

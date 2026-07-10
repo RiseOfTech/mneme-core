@@ -8,12 +8,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import io.github.ifamneme.mneme_core.application.CardNotFoundException;
+import io.github.ifamneme.mneme_core.application.ReviewNotFoundException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -31,6 +33,18 @@ public class ApiExceptionHandler {
 		return problem;
 	}
 
+	@ExceptionHandler(ReviewNotFoundException.class)
+	public ProblemDetail handleReviewNotFound(ReviewNotFoundException ex) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND,
+				"The requested review was not found.");
+		problem.setProperty("code", ErrorCode.REVIEW_NOT_FOUND.name());
+		// Spring fills a null "instance" with the request URI, which contains the review's
+		// cardId and would make a foreign-review response distinguishable from a missing-review
+		// one. Fix it to a card-id-free value so both are byte-identical.
+		problem.setInstance(URI.create("/v1/reviews"));
+		return problem;
+	}
+
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ProblemDetail handleValidationFailed(MethodArgumentNotValidException ex) {
 		Map<String, String> errors = new LinkedHashMap<>();
@@ -41,6 +55,15 @@ public class ApiExceptionHandler {
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed.");
 		problem.setProperty("code", ErrorCode.VALIDATION_FAILED.name());
 		problem.setProperty("errors", errors);
+		return problem;
+	}
+
+	@ExceptionHandler(HttpMessageNotReadableException.class)
+	public ProblemDetail handleMessageNotReadable(HttpMessageNotReadableException ex) {
+		// Malformed JSON and unrecognised enum values (e.g. an unknown grade) fail here,
+		// before Bean Validation ever runs, so MethodArgumentNotValidException never fires.
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed.");
+		problem.setProperty("code", ErrorCode.VALIDATION_FAILED.name());
 		return problem;
 	}
 
