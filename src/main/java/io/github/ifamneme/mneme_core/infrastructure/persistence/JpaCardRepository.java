@@ -40,4 +40,14 @@ class JpaCardRepository implements CardRepository {
 		return jpaRepository.findByIdInAndOwnerId(uuids, owner.value()).stream().map(mapper::toDomain).toList();
 	}
 
+	@Override
+	public List<Card> findAllByOwner(UserId owner) {
+		return jpaRepository.findByOwnerIdOrderByCreatedAtDesc(owner.value()).stream().map(mapper::toDomain).toList();
+	}
+
+	@Override
+	public void deleteByIdAndOwner(CardId id, UserId owner) {
+		jpaRepository.deleteByIdAndOwnerId(id.value(), owner.value());
+	}
+
 }

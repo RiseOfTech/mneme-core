@@ -1,6 +1,7 @@
 package io.github.ifamneme.mneme_core.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -9,6 +10,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 
 import io.github.ifamneme.mneme_core.AbstractIntegrationTest;
 import io.github.ifamneme.mneme_core.domain.Association;
@@ -111,6 +113,39 @@ class JpaReviewRepositoryIntegrationTest extends AbstractIntegrationTest {
 		reviewRepository.save(new Review(otherCard.id(), otherOwner, new ReviewState(new LeitnerBox(1), now.minus(Duration.ofDays(1)))));
 
 		assertThat(reviewRepository.findDue(owner, now)).isEmpty();
+	}
+
+	@Test
+	void deleteByCardIdAndOwnerRemovesReview() {
+		UserId owner = new UserId(UUID.randomUUID());
+		Card card = cardRepository.save(new Card(owner, new Word("word"), new Translation("translation"),
+				new Association("association"), null, Visibility.PRIVATE));
+		reviewRepository
+			.save(new Review(card.id(), owner, new ReviewState(new LeitnerBox(1), Instant.parse("2026-07-10T00:00:00Z"))));
+
+		reviewRepository.deleteByCardIdAndOwner(card.id(), owner);
+
+		assertThat(reviewRepository.findByCardIdAndOwner(card.id(), owner)).isEmpty();
+	}
+
+	@Test
+	void deleteByCardIdAndOwnerIsNoOpWhenReviewDoesNotExist() {
+		UserId owner = new UserId(UUID.randomUUID());
+		Card card = cardRepository.save(new Card(owner, new Word("word"), new Translation("translation"),
+				new Association("association"), null, Visibility.PRIVATE));
+
+		reviewRepository.deleteByCardIdAndOwner(card.id(), owner);
+	}
+
+	@Test
+	void deletingCardWhileReviewStillExistsViolatesForeignKeyConstraint() {
+		UserId owner = new UserId(UUID.randomUUID());
+		Card card = cardRepository.save(new Card(owner, new Word("word"), new Translation("translation"),
+				new Association("association"), null, Visibility.PRIVATE));
+		reviewRepository
+			.save(new Review(card.id(), owner, new ReviewState(new LeitnerBox(1), Instant.parse("2026-07-10T00:00:00Z"))));
+
+		assertThatThrownBy(() -> cardRepository.deleteByIdAndOwner(card.id(), owner)).isInstanceOf(DataAccessException.class);
 	}
 
 }

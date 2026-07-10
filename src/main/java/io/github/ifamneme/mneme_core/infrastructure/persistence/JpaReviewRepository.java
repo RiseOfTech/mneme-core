@@ -39,4 +39,9 @@ class JpaReviewRepository implements ReviewRepository {
 				.map(mapper::toDomain).toList();
 	}
 
+	@Override
+	public void deleteByCardIdAndOwner(CardId cardId, UserId owner) {
+		jpaRepository.deleteByCardIdAndOwnerId(cardId.value(), owner.value());
+	}
+
 }

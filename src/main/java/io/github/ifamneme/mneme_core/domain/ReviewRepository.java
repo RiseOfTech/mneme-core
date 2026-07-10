@@ -12,4 +12,6 @@ public interface ReviewRepository {
 
 	List<Review> findDue(UserId owner, Instant now);
 
+	void deleteByCardIdAndOwner(CardId cardId, UserId owner);
+
 }
