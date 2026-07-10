@@ -6,6 +6,6 @@ public interface ReviewRepository {
 
 	Review save(Review review);
 
-	Optional<Review> findByCardId(CardId cardId);
+	Optional<Review> findByCardIdAndOwner(CardId cardId, UserId owner);
 
 }

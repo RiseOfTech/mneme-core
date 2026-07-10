@@ -25,6 +25,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import io.github.ifamneme.mneme_core.domain.CardId;
 import io.github.ifamneme.mneme_core.domain.ReviewRepository;
+import io.github.ifamneme.mneme_core.domain.UserId;
 
 class CardEndpointIntegrationTest extends AbstractIntegrationTest {
 
@@ -71,7 +72,8 @@ class CardEndpointIntegrationTest extends AbstractIntegrationTest {
 				.andExpect(jsonPath("$.id").value(id))
 				.andExpect(jsonPath("$.translation").value("окружать"));
 
-		var review = reviewRepository.findByCardId(CardId.of(UUID.fromString(id))).orElseThrow();
+		var review = reviewRepository.findByCardIdAndOwner(CardId.of(UUID.fromString(id)), new UserId(OWNER_ID))
+				.orElseThrow();
 		assertThat(review.state().box().number()).isEqualTo(1);
 		assertThat(review.state().dueAt()).isBetween(beforeCreate.plus(FIRST_INTERVAL),
 				afterCreate.plus(FIRST_INTERVAL));

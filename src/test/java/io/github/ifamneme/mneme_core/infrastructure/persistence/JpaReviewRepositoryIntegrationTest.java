@@ -39,11 +39,23 @@ class JpaReviewRepositoryIntegrationTest extends AbstractIntegrationTest {
 
 		reviewRepository.save(review);
 
-		Review loaded = reviewRepository.findByCardId(card.id()).orElseThrow();
+		Review loaded = reviewRepository.findByCardIdAndOwner(card.id(), owner).orElseThrow();
 		assertThat(loaded.cardId()).isEqualTo(card.id());
 		assertThat(loaded.owner()).isEqualTo(owner);
 		assertThat(loaded.state().box().number()).isEqualTo(1);
 		assertThat(loaded.state().dueAt()).isEqualTo(dueAt);
+	}
+
+	@Test
+	void findByCardIdAndOwnerReturnsEmptyForAnotherOwner() {
+		UserId owner = new UserId(UUID.randomUUID());
+		UserId otherOwner = new UserId(UUID.randomUUID());
+		Card card = cardRepository.save(new Card(owner, new Word("word"), new Translation("translation"),
+				new Association("association"), null, Visibility.PRIVATE));
+		Review review = new Review(card.id(), owner, new ReviewState(new LeitnerBox(1), Instant.parse("2026-07-10T00:00:00Z")));
+		reviewRepository.save(review);
+
+		assertThat(reviewRepository.findByCardIdAndOwner(card.id(), otherOwner)).isEmpty();
 	}
 
 }
