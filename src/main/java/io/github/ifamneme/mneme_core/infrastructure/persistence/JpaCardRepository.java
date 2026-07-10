@@ -1,6 +1,9 @@
 package io.github.ifamneme.mneme_core.infrastructure.persistence;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
 
@@ -29,6 +32,12 @@ class JpaCardRepository implements CardRepository {
 	@Override
 	public Optional<Card> findByIdAndOwner(CardId id, UserId owner) {
 		return jpaRepository.findByIdAndOwnerId(id.value(), owner.value()).map(mapper::toDomain);
+	}
+
+	@Override
+	public List<Card> findAllByIdsAndOwner(Collection<CardId> ids, UserId owner) {
+		List<UUID> uuids = ids.stream().map(CardId::value).toList();
+		return jpaRepository.findByIdInAndOwnerId(uuids, owner.value()).stream().map(mapper::toDomain).toList();
 	}
 
 }

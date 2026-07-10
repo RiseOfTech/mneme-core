@@ -2,6 +2,7 @@ package io.github.ifamneme.mneme_core.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -73,6 +74,33 @@ class JpaCardRepositoryIntegrationTest extends AbstractIntegrationTest {
 		cardRepository.save(card);
 
 		assertThat(cardRepository.findByIdAndOwner(CardId.newId(), owner)).isEmpty();
+	}
+
+	@Test
+	void findAllByIdsAndOwnerReturnsMatchingCards() {
+		UserId owner = new UserId(UUID.randomUUID());
+		Card first = cardRepository.save(new Card(owner, new Word("first"), new Translation("translation"),
+				new Association("association"), null, Visibility.PRIVATE));
+		Card second = cardRepository.save(new Card(owner, new Word("second"), new Translation("translation"),
+				new Association("association"), null, Visibility.PRIVATE));
+
+		List<Card> found = cardRepository.findAllByIdsAndOwner(List.of(first.id(), second.id()), owner);
+
+		assertThat(found).extracting(Card::id).containsExactlyInAnyOrder(first.id(), second.id());
+	}
+
+	@Test
+	void findAllByIdsAndOwnerExcludesAnotherOwnersCards() {
+		UserId owner = new UserId(UUID.randomUUID());
+		UserId otherOwner = new UserId(UUID.randomUUID());
+		Card ownCard = cardRepository.save(new Card(owner, new Word("own"), new Translation("translation"),
+				new Association("association"), null, Visibility.PRIVATE));
+		Card otherCard = cardRepository.save(new Card(otherOwner, new Word("other"), new Translation("translation"),
+				new Association("association"), null, Visibility.PRIVATE));
+
+		List<Card> found = cardRepository.findAllByIdsAndOwner(List.of(ownCard.id(), otherCard.id()), owner);
+
+		assertThat(found).extracting(Card::id).containsExactly(ownCard.id());
 	}
 
 }
