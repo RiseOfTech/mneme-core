@@ -103,4 +103,55 @@ class JpaCardRepositoryIntegrationTest extends AbstractIntegrationTest {
 		assertThat(found).extracting(Card::id).containsExactly(ownCard.id());
 	}
 
+	@Test
+	void findAllByOwnerOrdersByCreatedAtDescendingAndExcludesAnotherOwner() throws InterruptedException {
+		UserId owner = new UserId(UUID.randomUUID());
+		UserId otherOwner = new UserId(UUID.randomUUID());
+
+		Card first = cardRepository.save(new Card(owner, new Word("first"), new Translation("translation"),
+				new Association("association"), null, Visibility.PRIVATE));
+		Thread.sleep(5);
+		Card second = cardRepository.save(new Card(owner, new Word("second"), new Translation("translation"),
+				new Association("association"), null, Visibility.PRIVATE));
+		Thread.sleep(5);
+		Card third = cardRepository.save(new Card(owner, new Word("third"), new Translation("translation"),
+				new Association("association"), null, Visibility.PRIVATE));
+		cardRepository.save(new Card(otherOwner, new Word("other"), new Translation("translation"),
+				new Association("association"), null, Visibility.PRIVATE));
+
+		List<Card> found = cardRepository.findAllByOwner(owner);
+
+		assertThat(found).extracting(Card::id).containsExactly(third.id(), second.id(), first.id());
+	}
+
+	@Test
+	void deleteByIdAndOwnerRemovesCard() {
+		UserId owner = new UserId(UUID.randomUUID());
+		Card card = cardRepository.save(new Card(owner, new Word("word"), new Translation("translation"),
+				new Association("association"), null, Visibility.PRIVATE));
+
+		cardRepository.deleteByIdAndOwner(card.id(), owner);
+
+		assertThat(cardRepository.findByIdAndOwner(card.id(), owner)).isEmpty();
+	}
+
+	@Test
+	void deleteByIdAndOwnerDoesNothingForAnotherOwner() {
+		UserId owner = new UserId(UUID.randomUUID());
+		UserId otherOwner = new UserId(UUID.randomUUID());
+		Card card = cardRepository.save(new Card(owner, new Word("word"), new Translation("translation"),
+				new Association("association"), null, Visibility.PRIVATE));
+
+		cardRepository.deleteByIdAndOwner(card.id(), otherOwner);
+
+		assertThat(cardRepository.findByIdAndOwner(card.id(), owner)).isPresent();
+	}
+
+	@Test
+	void deleteByIdAndOwnerDoesNothingForUnknownId() {
+		UserId owner = new UserId(UUID.randomUUID());
+
+		cardRepository.deleteByIdAndOwner(CardId.newId(), owner);
+	}
+
 }

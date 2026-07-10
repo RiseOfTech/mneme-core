@@ -12,4 +12,8 @@ public interface CardRepository {
 
 	List<Card> findAllByIdsAndOwner(Collection<CardId> ids, UserId owner);
 
+	List<Card> findAllByOwner(UserId owner);
+
+	void deleteByIdAndOwner(CardId id, UserId owner);
+
 }

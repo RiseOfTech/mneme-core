@@ -34,6 +34,11 @@ public final class Card {
 		return new Card(id, owner, word, translation, association, image, visibility);
 	}
 
+	public Card update(Word word, Translation translation, Association association, Image image,
+			Visibility visibility) {
+		return new Card(this.id, this.owner, word, translation, association, image, visibility);
+	}
+
 	public CardId id() {
 		return id;
 	}

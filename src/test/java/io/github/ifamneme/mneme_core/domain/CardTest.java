@@ -69,4 +69,38 @@ class CardTest {
 		assertThat(card.image()).contains(image);
 	}
 
+	@Test
+	void updateReturnsNewInstanceWithSameIdAndOwnerAndNewContent() {
+		Card card = new Card(owner, word, translation, association, null, Visibility.PRIVATE);
+
+		Word newWord = new Word("new-word");
+		Translation newTranslation = new Translation("new-translation");
+		Association newAssociation = new Association("new-association");
+		Image newImage = new Image("https://example.com/new.png");
+		Card updated = card.update(newWord, newTranslation, newAssociation, newImage, Visibility.PUBLIC);
+
+		assertThat(updated).isNotSameAs(card);
+		assertThat(updated.id()).isEqualTo(card.id());
+		assertThat(updated.owner()).isEqualTo(owner);
+		assertThat(updated.word()).isEqualTo(newWord);
+		assertThat(updated.translation()).isEqualTo(newTranslation);
+		assertThat(updated.association()).isEqualTo(newAssociation);
+		assertThat(updated.image()).contains(newImage);
+		assertThat(updated.visibility()).isEqualTo(Visibility.PUBLIC);
+	}
+
+	@Test
+	void updateLeavesOriginalInstanceUnchanged() {
+		Card card = new Card(owner, word, translation, association, null, Visibility.PRIVATE);
+
+		card.update(new Word("new-word"), new Translation("new-translation"), new Association("new-association"),
+				new Image("https://example.com/new.png"), Visibility.PUBLIC);
+
+		assertThat(card.word()).isEqualTo(word);
+		assertThat(card.translation()).isEqualTo(translation);
+		assertThat(card.association()).isEqualTo(association);
+		assertThat(card.image()).isEmpty();
+		assertThat(card.visibility()).isEqualTo(Visibility.PRIVATE);
+	}
+
 }
