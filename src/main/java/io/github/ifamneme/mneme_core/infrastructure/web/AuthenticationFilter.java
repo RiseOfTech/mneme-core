@@ -1,6 +1,7 @@
 package io.github.ifamneme.mneme_core.infrastructure.web;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Component;
@@ -19,6 +20,10 @@ public class AuthenticationFilter extends OncePerRequestFilter {
 
 	private static final String BEARER_PREFIX = "Bearer ";
 
+	// Publicly reachable without a token: health checks and, when enabled, the
+	// OpenAPI/Swagger UI docs endpoints.
+	private static final List<String> UNFILTERED_PREFIXES = List.of("/actuator", "/v3/api-docs", "/swagger-ui");
+
 	private final Authenticator authenticator;
 
 	public AuthenticationFilter(Authenticator authenticator) {
@@ -27,7 +32,8 @@ public class AuthenticationFilter extends OncePerRequestFilter {
 
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
-		return request.getRequestURI().startsWith("/actuator");
+		String uri = request.getRequestURI();
+		return UNFILTERED_PREFIXES.stream().anyMatch(uri::startsWith);
 	}
 
 	@Override
