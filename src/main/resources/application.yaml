@@ -20,3 +20,21 @@ app:
       demo-token: 00000000-0000-0000-0000-000000000001
   leitner:
     intervals: [1d, 3d, 7d, 16d, 30d]
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
