@@ -20,6 +20,9 @@ app:
       demo-token: 00000000-0000-0000-0000-000000000001
   leitner:
     intervals: [1d, 3d, 7d, 16d, 30d]
+  cors:
+    allowed-origins:
+      - http://localhost:5173
 
 springdoc:
   api-docs:
@@ -32,6 +35,10 @@ spring:
   config:
     activate:
       on-profile: prod
+
+app:
+  cors:
+    allowed-origins: []
 
 springdoc:
   api-docs:
