@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -33,7 +34,10 @@ public class AuthenticationFilter extends OncePerRequestFilter {
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
 		String uri = request.getRequestURI();
-		return UNFILTERED_PREFIXES.stream().anyMatch(uri::startsWith);
+		// CORS preflight requests carry no Authorization header by design; let them
+		// through so Spring's CORS handling can process them.
+		return UNFILTERED_PREFIXES.stream().anyMatch(uri::startsWith)
+				|| HttpMethod.OPTIONS.matches(request.getMethod());
 	}
 
 	@Override
