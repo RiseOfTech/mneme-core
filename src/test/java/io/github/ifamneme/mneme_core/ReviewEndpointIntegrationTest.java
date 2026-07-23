@@ -15,28 +15,25 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
+import io.github.ifamneme.mneme_core.support.JwtTestTokens;
+
 class ReviewEndpointIntegrationTest extends AbstractIntegrationTest {
 
-	private static final String OWNER_TOKEN = "review-owner-token";
-	private static final String OTHER_TOKEN = "review-other-token";
-	private static final UUID OWNER_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
-	private static final UUID OTHER_ID = UUID.fromString("44444444-4444-4444-4444-444444444444");
+	// Distinct from CardEndpointIntegrationTest's owner UUIDs - both classes share the
+	// same singleton Postgres container for the whole JVM, so reusing a UUID across test
+	// classes lets one class's cards leak into another's list/count assertions.
+	private static final UUID OWNER_ID = UUID.fromString("77777777-7777-7777-7777-777777777777");
+	private static final UUID OTHER_ID = UUID.fromString("88888888-8888-8888-8888-888888888888");
+	private static final String OWNER_TOKEN = JwtTestTokens.validToken(OWNER_ID);
+	private static final String OTHER_TOKEN = JwtTestTokens.validToken(OTHER_ID);
 	private static final Duration FIRST_INTERVAL = Duration.ofDays(1);
 	private static final Duration SECOND_INTERVAL = Duration.ofDays(3);
-
-	@DynamicPropertySource
-	static void registerExtraTokens(DynamicPropertyRegistry registry) {
-		registry.add("app.auth.tokens." + OWNER_TOKEN, () -> OWNER_ID.toString());
-		registry.add("app.auth.tokens." + OTHER_TOKEN, () -> OTHER_ID.toString());
-	}
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -142,6 +139,21 @@ class ReviewEndpointIntegrationTest extends AbstractIntegrationTest {
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+	}
+
+	// Regression test for the ERROR-dispatch trap: Spring Security re-authorizes Boot's
+	// internal forward to /error against the path "/error" itself, which matches no
+	// permitAll rule unless DispatcherType.ERROR is explicitly permitted - otherwise this
+	// comes back 401 instead of the correct 4xx. Only reproducible over a full context;
+	// invisible to a @WebMvcTest slice.
+	@Test
+	void getOnPostOnlyReviewRouteReturnsMethodNotAllowedNotUnauthorized() throws Exception {
+		String id = createCard(OWNER_TOKEN);
+
+		mockMvc.perform(get("/v1/reviews/" + id).header(HttpHeaders.AUTHORIZATION, "Bearer " + OWNER_TOKEN))
+				.andExpect(status().isMethodNotAllowed())
+				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"));
 	}
 
 }

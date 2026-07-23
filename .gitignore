@@ -12,3 +12,11 @@ out/
 # OS / misc
 .DS_Store
 *.log
+
+### Secrets / key material ###
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.jks

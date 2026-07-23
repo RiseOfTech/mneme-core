@@ -15,8 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.ifamneme.mneme_core.domain.CardId;
@@ -25,6 +23,7 @@ import io.github.ifamneme.mneme_core.domain.Review;
 import io.github.ifamneme.mneme_core.domain.ReviewRepository;
 import io.github.ifamneme.mneme_core.domain.ReviewState;
 import io.github.ifamneme.mneme_core.domain.UserId;
+import io.github.ifamneme.mneme_core.support.JwtTestTokens;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
@@ -37,13 +36,6 @@ import tools.jackson.databind.json.JsonMapper;
  */
 class SessionEndpointIntegrationTest extends AbstractIntegrationTest {
 
-	private static final String FRESH_TOKEN = "session-fresh-token";
-	private static final String DUE_TOKEN = "session-due-token";
-	private static final String GRADE_CORRECT_TOKEN = "session-grade-correct-token";
-	private static final String GRADE_INCORRECT_TOKEN = "session-grade-incorrect-token";
-	private static final String SELF_TOKEN = "session-self-token";
-	private static final String FOREIGN_TOKEN = "session-foreign-token";
-
 	private static final UUID FRESH_ID = UUID.randomUUID();
 	private static final UUID DUE_ID = UUID.randomUUID();
 	private static final UUID GRADE_CORRECT_ID = UUID.randomUUID();
@@ -51,15 +43,12 @@ class SessionEndpointIntegrationTest extends AbstractIntegrationTest {
 	private static final UUID SELF_ID = UUID.randomUUID();
 	private static final UUID FOREIGN_ID = UUID.randomUUID();
 
-	@DynamicPropertySource
-	static void registerExtraTokens(DynamicPropertyRegistry registry) {
-		registry.add("app.auth.tokens." + FRESH_TOKEN, () -> FRESH_ID.toString());
-		registry.add("app.auth.tokens." + DUE_TOKEN, () -> DUE_ID.toString());
-		registry.add("app.auth.tokens." + GRADE_CORRECT_TOKEN, () -> GRADE_CORRECT_ID.toString());
-		registry.add("app.auth.tokens." + GRADE_INCORRECT_TOKEN, () -> GRADE_INCORRECT_ID.toString());
-		registry.add("app.auth.tokens." + SELF_TOKEN, () -> SELF_ID.toString());
-		registry.add("app.auth.tokens." + FOREIGN_TOKEN, () -> FOREIGN_ID.toString());
-	}
+	private static final String FRESH_TOKEN = JwtTestTokens.validToken(FRESH_ID);
+	private static final String DUE_TOKEN = JwtTestTokens.validToken(DUE_ID);
+	private static final String GRADE_CORRECT_TOKEN = JwtTestTokens.validToken(GRADE_CORRECT_ID);
+	private static final String GRADE_INCORRECT_TOKEN = JwtTestTokens.validToken(GRADE_INCORRECT_ID);
+	private static final String SELF_TOKEN = JwtTestTokens.validToken(SELF_ID);
+	private static final String FOREIGN_TOKEN = JwtTestTokens.validToken(FOREIGN_ID);
 
 	@Autowired
 	private MockMvc mockMvc;

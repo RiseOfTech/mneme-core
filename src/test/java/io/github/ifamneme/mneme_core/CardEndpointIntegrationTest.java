@@ -18,8 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import tools.jackson.databind.JsonNode;
@@ -30,37 +28,28 @@ import io.github.ifamneme.mneme_core.domain.CardId;
 import io.github.ifamneme.mneme_core.domain.Review;
 import io.github.ifamneme.mneme_core.domain.ReviewRepository;
 import io.github.ifamneme.mneme_core.domain.UserId;
+import io.github.ifamneme.mneme_core.support.JwtTestTokens;
 
 class CardEndpointIntegrationTest extends AbstractIntegrationTest {
 
-	private static final String OWNER_TOKEN = "card-owner-token";
-	private static final String OTHER_TOKEN = "card-other-token";
 	private static final UUID OWNER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 	private static final UUID OTHER_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
+	private static final String OWNER_TOKEN = JwtTestTokens.validToken(OWNER_ID);
+	private static final String OTHER_TOKEN = JwtTestTokens.validToken(OTHER_ID);
 	private static final Duration FIRST_INTERVAL = Duration.ofDays(1);
 
 	// Each list/delete-count test below needs an owner whose card set is not touched by any
 	// other test method in this class (the Testcontainers Postgres instance is shared for the
 	// whole JVM, so OWNER_ID/OTHER_ID accumulate cards across every other test method). Dedicated
 	// tokens keep those assertions independent of test execution order.
-	private static final String LIST_TOKEN = "card-list-token";
-	private static final String LIST_FOREIGN_TOKEN = "card-list-foreign-token";
-	private static final String EMPTY_LIST_TOKEN = "card-empty-list-token";
-	private static final String DELETE_LIST_TOKEN = "card-delete-list-token";
 	private static final UUID LIST_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
 	private static final UUID LIST_FOREIGN_ID = UUID.fromString("44444444-4444-4444-4444-444444444444");
 	private static final UUID EMPTY_LIST_ID = UUID.fromString("55555555-5555-5555-5555-555555555555");
 	private static final UUID DELETE_LIST_ID = UUID.fromString("66666666-6666-6666-6666-666666666666");
-
-	@DynamicPropertySource
-	static void registerExtraTokens(DynamicPropertyRegistry registry) {
-		registry.add("app.auth.tokens." + OWNER_TOKEN, () -> OWNER_ID.toString());
-		registry.add("app.auth.tokens." + OTHER_TOKEN, () -> OTHER_ID.toString());
-		registry.add("app.auth.tokens." + LIST_TOKEN, () -> LIST_ID.toString());
-		registry.add("app.auth.tokens." + LIST_FOREIGN_TOKEN, () -> LIST_FOREIGN_ID.toString());
-		registry.add("app.auth.tokens." + EMPTY_LIST_TOKEN, () -> EMPTY_LIST_ID.toString());
-		registry.add("app.auth.tokens." + DELETE_LIST_TOKEN, () -> DELETE_LIST_ID.toString());
-	}
+	private static final String LIST_TOKEN = JwtTestTokens.validToken(LIST_ID);
+	private static final String LIST_FOREIGN_TOKEN = JwtTestTokens.validToken(LIST_FOREIGN_ID);
+	private static final String EMPTY_LIST_TOKEN = JwtTestTokens.validToken(EMPTY_LIST_ID);
+	private static final String DELETE_LIST_TOKEN = JwtTestTokens.validToken(DELETE_LIST_ID);
 
 	@Autowired
 	private MockMvc mockMvc;

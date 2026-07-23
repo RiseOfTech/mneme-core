@@ -12,12 +12,10 @@ spring:
     enabled: true
 
 app:
-  auth:
-    tokens:
-      # Placeholder only — real tokens come from environment variables in every real
-      # environment (Spring's relaxed binding: APP_AUTH_TOKENS_<KEY>). No real secret
-      # is committed here.
-      demo-token: 00000000-0000-0000-0000-000000000001
+  jwt:
+    # The mneme-auth RSA public key (PEM), supplied by the environment or a mounted
+    # file in every real environment. No real key material is committed here.
+    public-key: ${JWT_PUBLIC_KEY:classpath:keys/mneme-auth-public.pem}
   leitner:
     intervals: [1d, 3d, 7d, 16d, 30d]
   cors:
