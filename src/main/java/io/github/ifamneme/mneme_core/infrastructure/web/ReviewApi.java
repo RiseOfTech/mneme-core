@@ -20,6 +20,7 @@ import jakarta.validation.Valid;
 public interface ReviewApi {
 
 	@Operation(summary = "Record a grade for a card's review")
+	@ApiResponse(responseCode = "200", description = "Review recorded")
 	@ApiResponse(responseCode = "404", description = "Review not found",
 			content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
 	@ApiResponse(responseCode = "400", description = "Validation failed",

@@ -9,13 +9,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -25,19 +27,24 @@ import io.github.ifamneme.mneme_core.application.GetCardUseCase;
 import io.github.ifamneme.mneme_core.application.ListCardsUseCase;
 import io.github.ifamneme.mneme_core.application.UpdateCardUseCase;
 import io.github.ifamneme.mneme_core.domain.UserId;
+import io.github.ifamneme.mneme_core.infrastructure.config.SecurityConfig;
+import io.github.ifamneme.mneme_core.support.JwtTestTokens;
 
 @WebMvcTest(CardApi.class)
+@Import({ SecurityConfig.class, JwtAuthenticator.class, ProblemJsonAuthenticationEntryPoint.class })
 class CorsConfigTest {
 
 	private static final String ALLOWED_ORIGIN = "http://localhost:5173";
 
 	private static final String DISALLOWED_ORIGIN = "http://evil.example";
 
+	@DynamicPropertySource
+	static void jwtPublicKey(DynamicPropertyRegistry registry) {
+		registry.add("app.jwt.public-key", JwtTestTokens::publicKeyLocation);
+	}
+
 	@Autowired
 	private MockMvc mockMvc;
-
-	@MockitoBean
-	private Authenticator authenticator;
 
 	@MockitoBean
 	private CreateCardUseCase createCardUseCase;
@@ -54,7 +61,9 @@ class CorsConfigTest {
 	@MockitoBean
 	private DeleteCardUseCase deleteCardUseCase;
 
-	private final UserId owner = new UserId(UUID.randomUUID());
+	private final UUID knownUuid = UUID.randomUUID();
+
+	private final UserId owner = new UserId(knownUuid);
 
 	@Test
 	void whenPreflightFromAllowedOrigin_returnsAllowedCorsHeaders() throws Exception {
@@ -77,11 +86,11 @@ class CorsConfigTest {
 
 	@Test
 	void whenRealCrossOriginRequestWithValidToken_succeedsWithCorsHeaders() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
 		when(listCardsUseCase.list(owner)).thenReturn(List.of());
+		String token = JwtTestTokens.validToken(knownUuid);
 
 		mockMvc.perform(get("/v1/cards").header(HttpHeaders.ORIGIN, ALLOWED_ORIGIN)
-				.header(HttpHeaders.AUTHORIZATION, "Bearer valid-token"))
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
 				.andExpect(status().isOk())
 				.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, ALLOWED_ORIGIN));
 	}

@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -64,6 +65,18 @@ public class ApiExceptionHandler {
 		// before Bean Validation ever runs, so MethodArgumentNotValidException never fires.
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed.");
 		problem.setProperty("code", ErrorCode.VALIDATION_FAILED.name());
+		return problem;
+	}
+
+	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+	public ProblemDetail handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+		// Without this, the generic Exception.class handler below would swallow the
+		// method mismatch into a 500 before Spring's own resolver could ever set the
+		// correct 405 - which also means Boot's container-level /error dispatch (and
+		// the Security ERROR-dispatch permit that guards it) never gets exercised.
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.METHOD_NOT_ALLOWED,
+				"Request method '" + ex.getMethod() + "' is not supported for this endpoint.");
+		problem.setProperty("code", ErrorCode.METHOD_NOT_ALLOWED.name());
 		return problem;
 	}
 

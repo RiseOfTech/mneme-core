@@ -1,11 +1,11 @@
 package io.github.ifamneme.mneme_core.infrastructure.web;
 
-import java.util.Optional;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import io.github.ifamneme.mneme_core.domain.UserId;
 
 public interface Authenticator {
 
-	Optional<UserId> authenticate(String token);
+	UserId resolve(Jwt jwt);
 
 }

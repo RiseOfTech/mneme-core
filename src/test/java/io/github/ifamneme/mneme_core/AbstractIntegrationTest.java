@@ -6,6 +6,8 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import io.github.ifamneme.mneme_core.support.JwtTestTokens;
+
 @AutoConfigureMockMvc
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public abstract class AbstractIntegrationTest {
@@ -24,6 +26,7 @@ public abstract class AbstractIntegrationTest {
 		registry.add("spring.datasource.url", postgres::getJdbcUrl);
 		registry.add("spring.datasource.username", postgres::getUsername);
 		registry.add("spring.datasource.password", postgres::getPassword);
+		registry.add("app.jwt.public-key", JwtTestTokens::publicKeyLocation);
 	}
 
 }

@@ -6,7 +6,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -16,6 +19,8 @@ import io.github.ifamneme.mneme_core.application.DeleteCardUseCase;
 import io.github.ifamneme.mneme_core.application.GetCardUseCase;
 import io.github.ifamneme.mneme_core.application.ListCardsUseCase;
 import io.github.ifamneme.mneme_core.application.UpdateCardUseCase;
+import io.github.ifamneme.mneme_core.infrastructure.config.SecurityConfig;
+import io.github.ifamneme.mneme_core.support.JwtTestTokens;
 
 /**
  * Simulates the production posture (no configured origins) without needing the
@@ -23,16 +28,19 @@ import io.github.ifamneme.mneme_core.application.UpdateCardUseCase;
  * the resulting deny-all mapping must not fall back to any permissive default.
  */
 @WebMvcTest(CardApi.class)
+@Import({ SecurityConfig.class, JwtAuthenticator.class, ProblemJsonAuthenticationEntryPoint.class })
 @TestPropertySource(properties = "app.cors.allowed-origins=")
 class CorsConfigEmptyOriginsTest {
 
 	private static final String ANY_ORIGIN = "http://localhost:5173";
 
+	@DynamicPropertySource
+	static void jwtPublicKey(DynamicPropertyRegistry registry) {
+		registry.add("app.jwt.public-key", JwtTestTokens::publicKeyLocation);
+	}
+
 	@Autowired
 	private MockMvc mockMvc;
-
-	@MockitoBean
-	private Authenticator authenticator;
 
 	@MockitoBean
 	private CreateCardUseCase createCardUseCase;

@@ -33,6 +33,7 @@ public interface CardApi {
 			@Parameter(hidden = true) @AuthenticatedUser UserId userId);
 
 	@Operation(summary = "Get a card by id")
+	@ApiResponse(responseCode = "200", description = "Card found")
 	@ApiResponse(responseCode = "404", description = "Card not found",
 			content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
 	@GetMapping("/{id}")
@@ -43,6 +44,7 @@ public interface CardApi {
 	List<CardResponseDto> listCards(@Parameter(hidden = true) @AuthenticatedUser UserId userId);
 
 	@Operation(summary = "Update a card's content")
+	@ApiResponse(responseCode = "200", description = "Card updated")
 	@ApiResponse(responseCode = "404", description = "Card not found",
 			content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
 	@ApiResponse(responseCode = "400", description = "Validation failed",

@@ -14,14 +14,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -38,15 +40,20 @@ import io.github.ifamneme.mneme_core.domain.Translation;
 import io.github.ifamneme.mneme_core.domain.UserId;
 import io.github.ifamneme.mneme_core.domain.Visibility;
 import io.github.ifamneme.mneme_core.domain.Word;
+import io.github.ifamneme.mneme_core.infrastructure.config.SecurityConfig;
+import io.github.ifamneme.mneme_core.support.JwtTestTokens;
 
 @WebMvcTest(CardApi.class)
+@Import({ SecurityConfig.class, JwtAuthenticator.class, ProblemJsonAuthenticationEntryPoint.class })
 class CardControllerTest {
+
+	@DynamicPropertySource
+	static void jwtPublicKey(DynamicPropertyRegistry registry) {
+		registry.add("app.jwt.public-key", JwtTestTokens::publicKeyLocation);
+	}
 
 	@Autowired
 	private MockMvc mockMvc;
-
-	@MockitoBean
-	private Authenticator authenticator;
 
 	@MockitoBean
 	private CreateCardUseCase createCardUseCase;
@@ -65,15 +72,15 @@ class CardControllerTest {
 
 	private final UUID knownUuid = UUID.randomUUID();
 	private final UserId owner = new UserId(knownUuid);
+	private final String validToken = JwtTestTokens.validToken(knownUuid);
 
 	@Test
 	void whenValidTokenAndBody_createsCardAndReturns201() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
 		Card card = new Card(owner, new Word("surround"), new Translation("окружать"),
 				new Association("сир, нас окружают"), null, Visibility.PRIVATE);
 		when(createCardUseCase.create(any())).thenReturn(card);
 
-		mockMvc.perform(post("/v1/cards").header(HttpHeaders.AUTHORIZATION, "Bearer valid-token")
+		mockMvc.perform(post("/v1/cards").header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"word":"surround","translation":"окружать","association":"сир, нас окружают"}
@@ -85,9 +92,7 @@ class CardControllerTest {
 
 	@Test
 	void whenBlankWord_returns400() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
-
-		mockMvc.perform(post("/v1/cards").header(HttpHeaders.AUTHORIZATION, "Bearer valid-token")
+		mockMvc.perform(post("/v1/cards").header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"word":"   ","translation":"окружать","association":"сир, нас окружают"}
@@ -109,24 +114,22 @@ class CardControllerTest {
 
 	@Test
 	void whenExistingCard_returns200() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
 		Card card = new Card(owner, new Word("surround"), new Translation("окружать"),
 				new Association("сир, нас окружают"), null, Visibility.PRIVATE);
 		when(getCardUseCase.get(eq(owner), eq(card.id()))).thenReturn(card);
 
-		mockMvc.perform(get("/v1/cards/" + card.id().value()).header(HttpHeaders.AUTHORIZATION, "Bearer valid-token"))
+		mockMvc.perform(get("/v1/cards/" + card.id().value()).header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.id").value(card.id().value().toString()));
 	}
 
 	@Test
 	void whenCardNotFound_returns404() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
 		CardId id = CardId.newId();
 		when(getCardUseCase.get(eq(owner), eq(id))).thenThrow(new CardNotFoundException(id, owner));
 
 		String body = mockMvc
-				.perform(get("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer valid-token"))
+				.perform(get("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken))
 				.andExpect(status().isNotFound())
 				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("CARD_NOT_FOUND"))
@@ -142,12 +145,11 @@ class CardControllerTest {
 
 	@Test
 	void whenUseCaseThrowsUnexpectedException_returns500() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
 		CardId id = CardId.newId();
 		when(getCardUseCase.get(eq(owner), eq(id))).thenThrow(new RuntimeException("boom: connection refused"));
 
 		String body = mockMvc
-				.perform(get("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer valid-token"))
+				.perform(get("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken))
 				.andExpect(status().isInternalServerError())
 				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
@@ -158,12 +160,11 @@ class CardControllerTest {
 
 	@Test
 	void whenCardsExist_listReturns200WithCards() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
 		Card card = new Card(owner, new Word("surround"), new Translation("окружать"),
 				new Association("сир, нас окружают"), null, Visibility.PRIVATE);
 		when(listCardsUseCase.list(owner)).thenReturn(List.of(card));
 
-		mockMvc.perform(get("/v1/cards").header(HttpHeaders.AUTHORIZATION, "Bearer valid-token"))
+		mockMvc.perform(get("/v1/cards").header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[0].id").value(card.id().value().toString()))
 				.andExpect(jsonPath("$[0].word").value("surround"));
@@ -171,10 +172,9 @@ class CardControllerTest {
 
 	@Test
 	void whenNoCards_listReturns200WithEmptyArray() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
 		when(listCardsUseCase.list(owner)).thenReturn(List.of());
 
-		mockMvc.perform(get("/v1/cards").header(HttpHeaders.AUTHORIZATION, "Bearer valid-token"))
+		mockMvc.perform(get("/v1/cards").header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken))
 				.andExpect(status().isOk())
 				.andExpect(content().json("[]"));
 	}
@@ -186,13 +186,12 @@ class CardControllerTest {
 
 	@Test
 	void whenValidTokenAndBody_updatesCardAndReturns200() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
 		CardId id = CardId.newId();
 		Card updated = Card.reconstitute(id, owner, new Word("new-word"), new Translation("new-translation"),
 				new Association("new-association"), null, Visibility.PUBLIC);
 		when(updateCardUseCase.update(any())).thenReturn(updated);
 
-		mockMvc.perform(put("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer valid-token")
+		mockMvc.perform(put("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"word":"new-word","translation":"new-translation","association":"new-association","visibility":"PUBLIC"}
@@ -205,10 +204,9 @@ class CardControllerTest {
 
 	@Test
 	void whenUpdateBodyHasBlankWord_returns400() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
 		CardId id = CardId.newId();
 
-		mockMvc.perform(put("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer valid-token")
+		mockMvc.perform(put("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"word":"   ","translation":"translation","association":"association"}
@@ -221,12 +219,11 @@ class CardControllerTest {
 
 	@Test
 	void whenUpdatingNonExistentCard_returns404() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
 		CardId id = CardId.newId();
 		when(updateCardUseCase.update(any())).thenThrow(new CardNotFoundException(id, owner));
 
 		String body = mockMvc
-				.perform(put("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer valid-token")
+				.perform(put("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"word":"word","translation":"translation","association":"association"}
@@ -250,21 +247,19 @@ class CardControllerTest {
 
 	@Test
 	void whenValidToken_deletesCardAndReturns204() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
 		CardId id = CardId.newId();
 
-		mockMvc.perform(delete("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer valid-token"))
+		mockMvc.perform(delete("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken))
 				.andExpect(status().isNoContent())
 				.andExpect(content().string(""));
 	}
 
 	@Test
 	void whenDeletingNonExistentCard_returns404() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
 		CardId id = CardId.newId();
 		doThrow(new CardNotFoundException(id, owner)).when(deleteCardUseCase).delete(owner, id);
 
-		mockMvc.perform(delete("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer valid-token"))
+		mockMvc.perform(delete("/v1/cards/" + id.value()).header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken))
 				.andExpect(status().isNotFound())
 				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("CARD_NOT_FOUND"));

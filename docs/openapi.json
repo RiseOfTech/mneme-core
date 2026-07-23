@@ -31,6 +31,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "Card found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardResponseDto"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Card not found",
             "content": {
@@ -76,6 +86,16 @@
           "required": true
         },
         "responses": {
+          "200": {
+            "description": "Card updated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardResponseDto"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Card not found",
             "content": {
@@ -171,6 +191,16 @@
           "required": true
         },
         "responses": {
+          "200": {
+            "description": "Review recorded",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponseDto"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Review not found",
             "content": {
@@ -389,6 +419,34 @@
           }
         }
       },
+      "CardResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "word": {
+            "type": "string"
+          },
+          "translation": {
+            "type": "string"
+          },
+          "association": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "PRIVATE",
+              "PUBLIC"
+            ]
+          }
+        }
+      },
       "GradeRequestDto": {
         "type": "object",
         "properties": {
@@ -403,6 +461,19 @@
         "required": [
           "grade"
         ]
+      },
+      "ReviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "box": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       },
       "CreateCardRequestDto": {
         "type": "object",
@@ -435,34 +506,6 @@
           "translation",
           "word"
         ]
-      },
-      "CardResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "word": {
-            "type": "string"
-          },
-          "translation": {
-            "type": "string"
-          },
-          "association": {
-            "type": "string"
-          },
-          "imageUrl": {
-            "type": "string"
-          },
-          "visibility": {
-            "type": "string",
-            "enum": [
-              "PRIVATE",
-              "PUBLIC"
-            ]
-          }
-        }
       },
       "SessionCardDto": {
         "type": "object",

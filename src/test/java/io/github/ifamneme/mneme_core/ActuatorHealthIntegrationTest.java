@@ -17,4 +17,14 @@ class ActuatorHealthIntegrationTest extends AbstractIntegrationTest {
 		mockMvc.perform(get("/actuator/health")).andExpect(status().isOk());
 	}
 
+	@Test
+	void openApiDocsReturns200WithoutAuthorizationHeader() throws Exception {
+		mockMvc.perform(get("/v3/api-docs")).andExpect(status().isOk());
+	}
+
+	@Test
+	void swaggerUiReturns200WithoutAuthorizationHeader() throws Exception {
+		mockMvc.perform(get("/swagger-ui/index.html")).andExpect(status().isOk());
+	}
+
 }

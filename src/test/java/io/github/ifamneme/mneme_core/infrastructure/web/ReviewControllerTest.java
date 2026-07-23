@@ -9,14 +9,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -27,30 +29,38 @@ import io.github.ifamneme.mneme_core.domain.LeitnerBox;
 import io.github.ifamneme.mneme_core.domain.Review;
 import io.github.ifamneme.mneme_core.domain.ReviewState;
 import io.github.ifamneme.mneme_core.domain.UserId;
+import io.github.ifamneme.mneme_core.infrastructure.config.SecurityConfig;
+import io.github.ifamneme.mneme_core.support.JwtTestTokens;
 
 @WebMvcTest(ReviewApi.class)
+@Import({ SecurityConfig.class, JwtAuthenticator.class, ProblemJsonAuthenticationEntryPoint.class })
 class ReviewControllerTest {
+
+	@DynamicPropertySource
+	static void jwtPublicKey(DynamicPropertyRegistry registry) {
+		registry.add("app.jwt.public-key", JwtTestTokens::publicKeyLocation);
+	}
 
 	@Autowired
 	private MockMvc mockMvc;
 
 	@MockitoBean
-	private Authenticator authenticator;
-
-	@MockitoBean
 	private GradeReviewUseCase gradeReviewUseCase;
 
-	private final UserId owner = new UserId(UUID.randomUUID());
+	private final UUID knownUuid = UUID.randomUUID();
+
+	private final UserId owner = new UserId(knownUuid);
+
+	private final String validToken = JwtTestTokens.validToken(knownUuid);
 
 	@Test
 	void whenValidTokenAndBody_gradesAndReturns200() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
 		CardId cardId = CardId.newId();
 		Instant dueAt = Instant.parse("2026-07-12T00:00:00Z");
 		Review graded = new Review(cardId, owner, new ReviewState(new LeitnerBox(2), dueAt));
 		when(gradeReviewUseCase.grade(any())).thenReturn(graded);
 
-		mockMvc.perform(post("/v1/reviews/" + cardId.value()).header(HttpHeaders.AUTHORIZATION, "Bearer valid-token")
+		mockMvc.perform(post("/v1/reviews/" + cardId.value()).header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"grade":"CORRECT"}
@@ -62,12 +72,11 @@ class ReviewControllerTest {
 
 	@Test
 	void whenReviewNotFound_returns404() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
 		CardId cardId = CardId.newId();
 		when(gradeReviewUseCase.grade(any())).thenThrow(new ReviewNotFoundException(cardId, owner));
 
 		String body = mockMvc
-				.perform(post("/v1/reviews/" + cardId.value()).header(HttpHeaders.AUTHORIZATION, "Bearer valid-token")
+				.perform(post("/v1/reviews/" + cardId.value()).header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"grade":"CORRECT"}
@@ -82,10 +91,9 @@ class ReviewControllerTest {
 
 	@Test
 	void whenMissingGrade_returns400() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
 		CardId cardId = CardId.newId();
 
-		mockMvc.perform(post("/v1/reviews/" + cardId.value()).header(HttpHeaders.AUTHORIZATION, "Bearer valid-token")
+		mockMvc.perform(post("/v1/reviews/" + cardId.value()).header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken)
 				.contentType(MediaType.APPLICATION_JSON).content("{}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
@@ -94,10 +102,9 @@ class ReviewControllerTest {
 
 	@Test
 	void whenUnrecognisedGrade_returns400() throws Exception {
-		when(authenticator.authenticate("valid-token")).thenReturn(Optional.of(owner));
 		CardId cardId = CardId.newId();
 
-		mockMvc.perform(post("/v1/reviews/" + cardId.value()).header(HttpHeaders.AUTHORIZATION, "Bearer valid-token")
+		mockMvc.perform(post("/v1/reviews/" + cardId.value()).header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"grade":"MAYBE"}
