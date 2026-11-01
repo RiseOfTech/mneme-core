@@ -1,0 +1,31 @@
+schema: spec-driven
+
+context: |
+  mneme-core is the backend of Mneme: cards, Leitner spaced repetition, public REST API.
+  Java 21, Spring Boot 4.1, PostgreSQL, Gradle (Kotlin DSL). A family-scale MVP.
+
+  Before writing any artifact, read:
+  - PROJECT.md: product scope and rejected alternatives. Section 6 lists what is out of
+    MVP scope; do not build it, and do not reintroduce rejected alternatives.
+  - ARCHITECTURE.md: the authoritative design.
+  - AGENTS.md: engineering rules.
+
+  Write all artifacts in English. Image generation, the mneme-ai service, sharing and
+  advanced SRS are Phase 2 and must not appear in any artifact. Identity is owned by
+  mneme-auth; this service only validates its tokens.
+
+rules:
+  specs:
+    - Describe observable behaviour only. No class, method or library names.
+    - API scenarios state the HTTP status and, for errors, the machine-readable `code`.
+    - A resource owned by another user and a missing one are indistinguishable. State
+      this explicitly in any scenario that reads or writes an owned resource.
+  design:
+    - Reference ARCHITECTURE.md by section instead of restating it.
+    - Any decision that departs from or extends ARCHITECTURE.md goes under Decisions, with
+      the reasoning. The human records it in ARCHITECTURE.md after archive.
+  tasks:
+    - Order the work domain, then application, then infrastructure, with tests in each layer.
+    - Do not add a file, test or behaviour that tasks.md does not name. Flag it and ask.
+    - Do not edit ARCHITECTURE.md or PROJECT.md in a change unless the human explicitly asks.
+    - Finish with a task that runs `./gradlew clean build`.

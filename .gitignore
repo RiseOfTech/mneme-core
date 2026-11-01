@@ -20,3 +20,5 @@ out/
 *.key
 *.p12
 *.jks
+# OpenSpec task-review output
+build-report.md
