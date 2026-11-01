@@ -2,29 +2,29 @@
 
 ## Purpose
 
-Publishes a machine-readable contract of the REST API for client teams, and a browser UI for
-trying it, outside production.
+Публикует машиночитаемый контракт REST API для клиентских команд и браузерный интерфейс для его
+проверки вне production.
 
 ## Requirements
 
-### Requirement: Published contract
+### Requirement: Опубликованный контракт
 
-Outside the `prod` profile the system SHALL serve an OpenAPI document at `/v3/api-docs` and
-Swagger UI. The document SHALL list every `/v1` endpoint and declare an HTTP bearer security
-scheme, with validation constraints shown on request bodies.
+Вне профиля `prod` система SHALL отдавать документ OpenAPI по адресу `/v3/api-docs` и Swagger UI.
+Документ SHALL перечислять все эндпоинты `/v1` и объявлять схему безопасности HTTP bearer, показывая
+ограничения валидации на телах запросов.
 
-#### Scenario: Contract served
-- **WHEN** `GET /v3/api-docs` is requested outside `prod`
-- **THEN** the response is `200` with the OpenAPI document
+#### Scenario: Контракт отдаётся
+- **WHEN** вне `prod` запрашивается `GET /v3/api-docs`
+- **THEN** ответ — `200` с документом OpenAPI
 
-#### Scenario: Swagger UI served
-- **WHEN** `GET /swagger-ui/index.html` is requested outside `prod`
-- **THEN** the response is `200`
+#### Scenario: Swagger UI отдаётся
+- **WHEN** вне `prod` запрашивается `GET /swagger-ui/index.html`
+- **THEN** ответ — `200`
 
-### Requirement: No documentation in production
+### Requirement: Нет документации в production
 
-The `prod` profile MUST disable the OpenAPI document and Swagger UI.
+Профиль `prod` MUST отключать документ OpenAPI и Swagger UI.
 
-#### Scenario: Production profile
-- **WHEN** the service runs with the `prod` profile
-- **THEN** the OpenAPI document and Swagger UI are not served
+#### Scenario: Профиль production
+- **WHEN** сервис работает с профилем `prod`
+- **THEN** документ OpenAPI и Swagger UI не отдаются

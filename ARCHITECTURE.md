@@ -1,50 +1,50 @@
-# mneme-core — Architecture
+# mneme-core — Архитектура
 
-Authoritative design for the `mneme-core` service. This is the "how".
+Авторитетный дизайн сервиса `mneme-core`. Это ответ на вопрос "как".
 
-- **Scope and product decisions** live in `PROJECT.md`. Not repeated here.
-- **Engineering standards** (Clean Architecture, SOLID, Clean Code, testing) live in
-  the global `AGENTS.md`. Not repeated here — this document assumes them and only
-  records project-specific structure and decisions.
-- **Stack and conventions** live in the project `AGENTS.md`.
+- **Объём и продуктовые решения** описаны в `PROJECT.md`. Здесь не повторяются.
+- **Инженерные стандарты** (Clean Architecture, SOLID, Clean Code, тестирование) описаны
+  в global `AGENTS.md`. Здесь не повторяются — этот документ исходит из них и фиксирует
+  только проектную структуру и решения.
+- **Стек и соглашения** описаны в проектном `CLAUDE.md`.
 
-When this document conflicts with a lower-level guess, this document wins. When a
-decision is genuinely not made yet, it is listed under "Open / deferred" — do not
-invent it, ask.
-
----
-
-## 1. Style and layering
-
-Clean Architecture, layer-first. The dependency rule is absolute: outer layers depend
-on inner layers, never the reverse. Frameworks (Spring, JPA, HTTP) are details at the
-edges. The domain is the most stable layer and compiles without `jakarta.persistence`,
-Spring, or any web type on its classpath.
-
-**Three model kinds — never collapse them into fewer:**
-
-1. **Domain model** — `Card`, `Review`, value objects, `LeitnerBox`, `Grade`. Pure
-   Java, zero framework annotations. Holds behaviour and invariants.
-2. **Persistence model** — JPA entities (`CardEntity`, `ReviewEntity`). Live **only**
-   inside the persistence adapter. Never returned to or accepted from upper layers.
-3. **DTOs** — request/response types at the REST edge. Live only in the web adapter.
-
-Two mappings, both at the edges: domain↔persistence (in the persistence adapter) and
-domain↔dto (in the web adapter). The domain in the middle knows about neither.
-Mapping is written by hand to start (the models are not 1:1 — e.g. `Word` is a value
-object in the domain, a `text` column in the table). Introduce MapStruct only if the
-number of mappers grows enough to justify it.
+Если этот документ конфликтует с догадкой более низкого уровня, побеждает этот документ.
+Если решение действительно ещё не принято, оно указано в разделе "Открытые и отложенные
+вопросы" — не выдумывай его, спроси.
 
 ---
 
-## 2. Module and package layout
+## 1. Стиль и слои
 
-**Single Gradle module.** Multi-module (`:domain`, `:application`, `:infrastructure`)
-is a recorded upgrade path — it turns the dependency rule into a compiler-enforced
-wall — but is premature for a single-developer MVP. Adopt it only if the boundary
-starts leaking or the k8s/deploy goal specifically calls for it.
+Clean Architecture, разбиение по слоям. Правило зависимостей абсолютно: внешние слои зависят
+от внутренних, никогда наоборот. Фреймворки (Spring, JPA, HTTP) — детали на
+границах. Домен — самый стабильный слой, он компилируется без `jakarta.persistence`,
+Spring и любых веб-типов в classpath.
 
-Layer-first packages under the root package `io.github.ifamneme.mneme_core`:
+**Три вида моделей — никогда не сводить их к меньшему числу:**
+
+1. **Доменная модель** — `Card`, `Review`, value objects, `LeitnerBox`, `Grade`. Чистая
+   Java, ни одной аннотации фреймворка. Содержит поведение и инварианты.
+2. **Модель хранения** — JPA-сущности (`CardEntity`, `ReviewEntity`). Живут **только**
+   внутри адаптера хранения. Никогда не возвращаются в верхние слои и не принимаются из них.
+3. **DTO** — типы запросов и ответов на границе REST. Живут только в веб-адаптере.
+
+Два отображения, оба на границах: домен↔хранение (в адаптере хранения) и
+домен↔dto (в веб-адаптере). Домен посередине не знает ни о том, ни о другом.
+Для начала отображение пишется вручную (модели не соответствуют 1:1 — например, `Word` в
+домене является value object, а в таблице — столбцом `text`). MapStruct вводится, только если
+число мапперов вырастет настолько, что это будет оправдано.
+
+---
+
+## 2. Раскладка модулей и пакетов
+
+**Один модуль Gradle.** Многомодульность (`:domain`, `:application`, `:infrastructure`)
+— зафиксированный путь развития: она превращает правило зависимостей в стену, которую
+обеспечивает компилятор, но для MVP с одним разработчиком это преждевременно. Переходить
+на неё стоит, только если граница начнёт протекать или этого потребует цель deploy/k8s.
+
+Пакеты по слоям под корневым пакетом `io.github.ifamneme.mneme_core`:
 
 ```
 io.github.ifamneme.mneme_core
@@ -60,155 +60,154 @@ io.github.ifamneme.mneme_core
     └── config          // Spring configuration, @ConfigurationProperties
 ```
 
-**Ports live with the domain, not with the adapters.** `CardRepository` (interface) is
-in `domain`; `JpaCardRepository` (implementation) is in `infrastructure/persistence`.
-Infrastructure depends on the domain by implementing its interfaces — this is the
-Dependency Inversion made visible in the package topology. If an interface for an
-outbound dependency ends up in `infrastructure`, the boundary has been drawn the wrong
-way round.
+**Порты живут с доменом, а не с адаптерами.** `CardRepository` (интерфейс) находится в
+`domain`; `JpaCardRepository` (реализация) — в `infrastructure/persistence`.
+Инфраструктура зависит от домена, реализуя его интерфейсы — так Dependency Inversion
+становится видимой в топологии пакетов. Если интерфейс исходящей зависимости оказался в
+`infrastructure`, граница проведена в обратную сторону.
 
 ---
 
-## 3. Domain model
+## 3. Доменная модель
 
-### Aggregates
+### Агрегаты
 
-Two aggregates, deliberately split:
+Два агрегата, разделённые намеренно:
 
-- **`Card`** — the content: `word`, `translation`, `association`, optional `image`,
-  `visibility`. The authoring lifecycle.
-- **`Review`** — the repetition state: `box`, `dueAt`. The study lifecycle.
+- **`Card`** — содержимое: `word`, `translation`, `association`, необязательное `image`,
+  `visibility`. Жизненный цикл авторства.
+- **`Review`** — состояние повторения: `box`, `dueAt`. Жизненный цикл изучения.
 
-They are linked **only by `CardId` value** — no object references between the two
-roots, and (see §6) no JPA association between their entities. The relationship is
-strictly 1:1.
+Они связаны **только значением `CardId`** — никаких объектных ссылок между двумя
+корнями и (см. §6) никакой JPA-ассоциации между их сущностями. Связь
+строго 1:1.
 
-**Why two aggregates, not one.** Content and repetition state change independently and
-for different reasons (authoring vs studying), and there is no invariant between them
-that must hold atomically — there is no rule "the box must match some content field".
-When two things need not be consistent within one transaction, they can be separate
-aggregates. This also makes a required invariant structural rather than disciplinary:
+**Почему два агрегата, а не один.** Содержимое и состояние повторения меняются независимо
+и по разным причинам (авторство и изучение), и между ними нет инварианта, который должен
+соблюдаться атомарно — нет правила "ящик должен соответствовать какому-то полю содержимого".
+Если две вещи не обязаны быть согласованы в рамках одной транзакции, они могут быть отдельными
+агрегатами. Это также делает обязательный инвариант структурным, а не дисциплинарным:
 
-> **Editing card content never touches review state.**
+> **Редактирование содержимого карточки никогда не затрагивает состояние повторения.**
 
-With two aggregates the content-editing path physically never loads `Review`, so it
-*cannot* alter the box — the guarantee holds by construction, not by reviewer
-vigilance.
+При двух агрегатах путь редактирования содержимого физически никогда не загружает `Review`,
+поэтому он *не может* изменить ящик — гарантия держится на конструкции, а не на
+бдительности ревьюера.
 
-What this split is **not**: not two services, not eventual consistency, not domain
-events between them. Everything is synchronous, in-process, in one transaction where
-needed (§4). The separation is at the aggregate/repository level only.
+Чем это разделение **не является**: не двумя сервисами, не eventual consistency, не доменными
+событиями между ними. Всё синхронно, в одном процессе, в одной транзакции там, где
+нужно (§4). Разделение существует только на уровне агрегатов и репозиториев.
 
-### Identity and ownership
+### Идентичность и владение
 
-- `UserId` is part of the domain from the start and is present on **both** aggregates
-  (`Review` carries `owner`, not only `cardId`) — otherwise every session query would
-  have to load `Card` just to check ownership, quietly re-coupling the two.
-- `UserId` arrives in the application layer as an **explicit use-case parameter**. It
-  is never read from a `SecurityContext` inside the domain or use case. Extraction from
-  the authentication mechanism happens at the edge (§8).
-- Card `id` is a UUID **generated in the domain** at creation time (the card has
-  identity in memory before it is ever persisted). The database only stores it.
+- `UserId` входит в домен с самого начала и присутствует в **обоих** агрегатах
+  (`Review` содержит `owner`, а не только `cardId`) — иначе каждому запросу сессии
+  пришлось бы загружать `Card` только для проверки владения, незаметно снова связывая их.
+- `UserId` поступает в слой application как **явный параметр use case**. Он
+  никогда не читается из `SecurityContext` внутри домена или use case. Извлечение из
+  механизма аутентификации происходит на границе (§8).
+- `id` карточки — это UUID, **сгенерированный в домене** при создании (у карточки есть
+  идентичность в памяти ещё до сохранения). База данных его только хранит.
 
 ### Value objects
 
-`Word`, `Translation`, `Association` are value objects, not bare strings — they make
-illegal states harder to represent and keep validation in one place. `Grade` is a
-binary value (`Correct` / `Incorrect`). `Visibility` is `Private` (default) / `Public`.
+`Word`, `Translation`, `Association` — value objects, а не голые строки: они делают
+недопустимые состояния труднее представимыми и держат валидацию в одном месте. `Grade` —
+бинарное значение (`Correct` / `Incorrect`). `Visibility` — `Private` (по умолчанию) / `Public`.
 
 ---
 
-## 4. Application layer (use cases)
+## 4. Слой application (use cases)
 
-Use cases orchestrate the domain; they do not contain domain logic.
+Use cases оркеструют домен; доменной логики они не содержат.
 
-MVP use cases (indicative):
+Use cases в MVP (ориентировочно):
 
-- **Create card** — creates `Card` and, in the **same transaction**, its initial
-  `Review` (box 1, `dueAt` = today). "A card is ready to study immediately" is an
-  invariant of *this use case*, not of either aggregate.
-- **Get / list cards**, **update card content**, **delete card**.
-- **Grade a review** — takes `(userId, cardId, grade)`; loads the `Review`, applies the
-  scheduling strategy, saves. `Grade` is an incoming fact, never stored.
-- **Review session query** — see below.
+- **Создание карточки** — создаёт `Card` и в **той же транзакции** её начальный
+  `Review` (ящик 1, `dueAt` = сегодня). "Карточка сразу готова к изучению" — инвариант
+  *этого use case*, а не какого-либо из агрегатов.
+- **Получение и список карточек**, **обновление содержимого карточки**, **удаление карточки**.
+- **Оценка повторения** — принимает `(userId, cardId, grade)`; загружает `Review`, применяет
+  стратегию планирования, сохраняет. `Grade` — входящий факт, он никогда не хранится.
+- **Запрос сессии повторения** — см. ниже.
 
-### Transaction boundary
+### Граница транзакции
 
-Pragmatic choice: `@Transactional` on the application service (use case), and **only**
-where a use case performs more than one write. Today that is exactly one place: create
-card. Single-write use cases rely on the repository's own transactionality and get no
-annotation. Never `@Transactional` on the domain or on controllers.
+Прагматичный выбор: `@Transactional` на прикладном сервисе (use case), и **только**
+там, где use case выполняет больше одной записи. Сегодня это ровно одно место: создание
+карточки. Use cases с одной записью полагаются на собственную транзакционность репозитория
+и аннотации не получают. Никогда `@Transactional` на домене или контроллерах.
 
-This is a conscious compromise: the application layer imports one Spring annotation and
-is therefore not 100% framework-free. Building a `TransactionRunner` port for a single
-site would be invented complexity. **Escape hatch:** if multi-write use cases reach
-three or four, or use cases must run in tests with no Spring on the classpath,
-introduce a `TransactionRunner` port (interface in `application`, Spring impl in the
-adapter). Not before.
+Это сознательный компромисс: слой application импортирует одну аннотацию Spring и
+поэтому не на 100% свободен от фреймворка. Строить порт `TransactionRunner` ради одного
+места было бы выдуманной сложностью. **Запасной выход:** если число use cases с несколькими
+записями достигнет трёх-четырёх или use cases должны будут работать в тестах без Spring в
+classpath, вводится порт `TransactionRunner` (интерфейс в `application`, реализация на Spring в
+адаптере). Не раньше.
 
-### Review session read
+### Чтение сессии повторения
 
-The session ("cards whose due date has arrived") crosses both aggregates: filter by
-`Review.dueAt`, show `Card` content. It is assembled in the use case from the two
-repositories — `ReviewRepository.findDue(userId, now)` then
-`CardRepository.findAllByIds(...)` — and returned as a dedicated view model,
-`ReviewSessionView` (`{cardId, word, translation, association, box, dueAt}`), ordered
-by `dueAt`. Raw aggregates are never returned to the edge.
+Сессия ("карточки, срок которых наступил") пересекает оба агрегата: фильтр по
+`Review.dueAt`, показ содержимого `Card`. Она собирается в use case из двух
+репозиториев — `ReviewRepository.findDue(userId, now)`, затем
+`CardRepository.findAllByIds(...)` — и возвращается как отдельная view model,
+`ReviewSessionView` (`{cardId, word, translation, association, box, dueAt}`), упорядоченная
+по `dueAt`. Голые агрегаты никогда не возвращаются на границу.
 
-A dedicated read model (a `DueCardsQuery` port returning a projection in one query) is
-a recorded door, **not** taken now — at family scale the two-query assembly is trivial
-and it would be premature CQRS. Because the use case returns a view model rather than
-raw aggregates, moving to a read model later is a local change inside one method; the
-signature and everything above it stay put. **Triggers to revisit:** a second
-cross-aggregate read scenario appears; the manual assembly starts carrying logic beyond
-a simple zip; the dataset stops being family-sized.
-
----
-
-## 5. Ports
-
-Outbound dependencies are interfaces declared by the inner layers; adapters implement
-them.
-
-- **`CardRepository`, `ReviewRepository`** — declared in `domain`, in domain terms
-  (`save(Card)`, `findById(CardId)`, `findDue(UserId, Instant)` …). No SQL, no table,
-  no `JpaRepository` in their signatures. Two aggregates → two repositories.
-- **`Authenticator`** — declared in the web adapter; resolves an incoming credential to
-  a `UserId` (or rejects). See §8.
-- **Scheduling** is a **domain Strategy behind an interface, not a port** — there is no
-  external system behind it. See §9.
-
-In MVP the only outbound port to an external system is persistence (Postgres). There is
-**no image-generation port** in MVP (see §10).
+Отдельная read model (порт `DueCardsQuery`, возвращающий проекцию одним запросом) —
+зафиксированная возможность, которая сейчас **не** используется: в семейном масштабе сборка из двух
+запросов тривиальна, и это был бы преждевременный CQRS. Поскольку use case возвращает view model,
+а не голые агрегаты, переход на read model позже — локальное изменение внутри одного метода;
+сигнатура и всё, что над ней, остаётся на месте. **Триггеры для пересмотра:** появляется второй
+сценарий чтения через агрегаты; ручная сборка начинает нести логику сложнее простого
+zip; набор данных перестаёт быть семейного размера.
 
 ---
 
-## 6. Persistence adapter
+## 5. Порты
 
-Stack decision (this closes the open item in the project `AGENTS.md`, which forbade
-persistence dependencies until decided here): **JPA/Hibernate + Flyway + PostgreSQL
-driver.** These dependencies may now be added to the build.
+Исходящие зависимости — интерфейсы, объявленные внутренними слоями; адаптеры их
+реализуют.
 
-JPA is used **narrowly**, as a plain object-to-table mapper. The domain has no object
-graphs, no many-to-many, no lazy collections — none of JPA's heavy machinery is needed,
-so none of it is used. The rule that keeps JPA from eroding the architecture:
+- **`CardRepository`, `ReviewRepository`** — объявлены в `domain` в доменных терминах
+  (`save(Card)`, `findById(CardId)`, `findDue(UserId, Instant)` …). Никакого SQL, таблиц
+  и `JpaRepository` в их сигнатурах. Два агрегата → два репозитория.
+- **`Authenticator`** — объявлен в веб-адаптере; сопоставляет входящие учётные данные с
+  `UserId` (или отклоняет). См. §8.
+- **Планирование** — это **доменная Strategy за интерфейсом, а не порт**: за ней нет
+  внешней системы. См. §9.
 
-> All JPA lives inside the persistence adapter and leaves it via no class, interface,
-> or annotation.
+В MVP единственный исходящий порт к внешней системе — хранение (Postgres). Порта
+**генерации изображений** в MVP нет (см. §10).
 
-Concrete rules:
+---
 
-- **Separate entities.** `CardEntity` / `ReviewEntity` carry the JPA annotations; the
-  domain `Card` / `Review` stay annotation-free. Do not annotate the domain types.
-- **Repository port vs Spring Data.** The domain port `CardRepository` is implemented by
-  `JpaCardRepository` in the adapter, which internally uses a Spring Data
-  `CardJpaRepository extends JpaRepository<CardEntity, UUID>` and maps entity↔domain.
-  The Spring Data interface is a private detail of the adapter and does not escape the
-  `persistence` package. A use case never depends on `JpaRepository`.
-- **No JPA association between the two aggregates.** No `@OneToOne` / `@ManyToOne`
-  between `CardEntity` and `ReviewEntity`. The link is the `card_id` value only.
+## 6. Адаптер хранения
 
-### Tables
+Решение по стеку (закрывает открытый пункт в проектном `CLAUDE.md`, который запрещал
+зависимости хранения, пока вопрос не решён здесь): **JPA/Hibernate + Flyway + драйвер
+PostgreSQL.** Теперь эти зависимости можно добавлять в сборку.
+
+JPA используется **узко**, как простой маппер объектов на таблицы. В домене нет графов
+объектов, many-to-many и ленивых коллекций — тяжёлая машинерия JPA не нужна,
+поэтому она не используется. Правило, которое не даёт JPA размывать архитектуру:
+
+> Весь JPA живёт внутри адаптера хранения и не покидает его ни в виде класса, ни в виде
+> интерфейса, ни в виде аннотации.
+
+Конкретные правила:
+
+- **Отдельные сущности.** `CardEntity` / `ReviewEntity` несут аннотации JPA; доменные
+  `Card` / `Review` остаются без аннотаций. Не аннотируй доменные типы.
+- **Порт репозитория и Spring Data.** Доменный порт `CardRepository` реализуется
+  `JpaCardRepository` в адаптере, который внутри использует Spring Data
+  `CardJpaRepository extends JpaRepository<CardEntity, UUID>` и отображает сущность↔домен.
+  Интерфейс Spring Data — приватная деталь адаптера, он не выходит за пределы пакета
+  `persistence`. Use case никогда не зависит от `JpaRepository`.
+- **Никакой JPA-ассоциации между двумя агрегатами.** Никаких `@OneToOne` / `@ManyToOne`
+  между `CardEntity` и `ReviewEntity`. Связь — только значение `card_id`.
+
+### Таблицы
 
 ```
 cards
@@ -229,156 +228,156 @@ reviews
   due_at       timestamptz not null
 ```
 
-- **`reviews` primary key is `card_id`** — the 1:1 relationship is enforced by the
-  schema, not by hope. (Caveat under §10 if review *history* is ever needed.)
-- A real foreign-key constraint `reviews.card_id → cards.id` exists at the database
-  level for data integrity. It does **not** imply object navigation between entities.
-- **Mandatory index `(owner_id, due_at)` on `reviews`** — this is the hot path
-  (`findDue`) and the concrete lever for the p95 100–200 ms target (§8, §11). Without
-  it the session scans the table. This is a design decision, not a later optimisation.
-- **Enums are stored as strings** (`EnumType.STRING`), never ordinal — ordinal values
-  break silently when an enum constant is inserted in the middle. `Grade` is not stored
-  (it is an incoming fact).
+- **Первичный ключ `reviews` — это `card_id`**: связь 1:1 обеспечивается
+  схемой, а не надеждой. (Оговорка в §10 на случай, если когда-нибудь понадобится *история* повторений.)
+- Настоящее ограничение внешнего ключа `reviews.card_id → cards.id` существует на уровне
+  базы данных для целостности данных. Оно **не** подразумевает объектную навигацию между сущностями.
+- **Обязательный индекс `(owner_id, due_at)` на `reviews`** — это горячий путь
+  (`findDue`) и конкретный рычаг для цели p95 100–200 мс (§8, §11). Без него
+  сессия сканирует таблицу. Это проектное решение, а не отложенная оптимизация.
+- **Перечисления хранятся как строки** (`EnumType.STRING`), никогда как порядковые номера:
+  порядковые значения незаметно ломаются, когда константа вставляется в середину перечисления.
+  `Grade` не хранится (это входящий факт).
 
-### Schema management
+### Управление схемой
 
-Schema is owned by **Flyway migrations** (checked into git). Hibernate `ddl-auto:
-validate` — never `update`/`create` in any real environment (schema drift and data
-loss). Flyway enters the project together with JPA.
+Схемой владеют **миграции Flyway** (лежат в git). Hibernate `ddl-auto: validate` —
+никогда `update`/`create` в реальном окружении (дрейф схемы и потеря
+данных). Flyway входит в проект вместе с JPA.
 
 ---
 
-## 7. Web adapter (REST)
+## 7. Веб-адаптер (REST)
 
-Versioned under `/v1`. `userId` never appears in paths — the caller's identity comes
-from authentication (§8), not the URL. Three resources, each owning one domain verb:
+Версионируется под `/v1`. `userId` никогда не появляется в путях — личность вызывающего берётся
+из аутентификации (§8), а не из URL. Три ресурса, каждый владеет одним доменным глаголом:
 
-**`/v1/cards`** — the card collection (content). CRUD.
-- `POST /v1/cards` — create (internally one use case writes `Card` + initial `Review`;
-  externally this is just "created a card").
+**`/v1/cards`** — коллекция карточек (содержимое). CRUD.
+- `POST /v1/cards` — создание (внутри один use case записывает `Card` + начальный `Review`;
+  снаружи это просто "создали карточку").
 - `GET /v1/cards`, `GET /v1/cards/{id}`
-- `PUT /v1/cards/{id}` — content only. Box and due date are **not** accepted here; the
-  request body has no such fields.
+- `PUT /v1/cards/{id}` — только содержимое. Ящик и срок здесь **не** принимаются; в
+  теле запроса таких полей нет.
 - `DELETE /v1/cards/{id}`
 
-**`/v1/reviews/{cardId}`** — repetition state.
-- `POST /v1/reviews/{cardId}` with body `{ "grade": "correct" }` — record the answer.
-  The client sends a **fact**; the domain moves the box per Leitner. The client never
-  writes `box` directly (that would push the algorithm out to the client).
+**`/v1/reviews/{cardId}`** — состояние повторения.
+- `POST /v1/reviews/{cardId}` с телом `{ "grade": "correct" }` — записать ответ.
+  Клиент отправляет **факт**; домен перемещает ящик по Лейтнеру. Клиент никогда
+  не записывает `box` напрямую (это вытолкнуло бы алгоритм на клиента).
 
-**`/v1/session/cards`** — the study session (read-only).
-- `GET /v1/session/cards` — the cards due now (`ReviewSessionView` projection). Returns
-  `200 []` when nothing is due (a valid state, not an error). `session/` is a namespace
-  reserved for later session-scoped endpoints (`session/stats`, …); it is a
-  read/scenario resource and must not gain write endpoints — grading stays on
+**`/v1/session/cards`** — учебная сессия (только чтение).
+- `GET /v1/session/cards` — карточки, срок которых наступил сейчас (проекция `ReviewSessionView`).
+  Возвращает `200 []`, когда ничего не наступило (допустимое состояние, а не ошибка). `session/` — пространство имён,
+  зарезервированное для будущих эндпоинтов уровня сессии (`session/stats`, …); это
+  ресурс чтения/сценария, он не должен получать эндпоинты записи — оценивание остаётся на
   `/v1/reviews`.
 
-The core exposes universal, domain-shaped resources — never endpoints shaped to a
-particular front-end screen. Aggregation for a specific client (a "give me everything
-for this screen" call) is a **BFF concern and lives outside the core** (e.g. in
-`mneme-web`), not in `mneme-core`.
+Ядро предоставляет универсальные ресурсы в форме домена — никогда не эндпоинты под
+конкретный экран фронтенда. Агрегация для конкретного клиента (вызов "дай мне всё
+для этого экрана") — **забота BFF, и она живёт вне ядра** (например, в
+`mneme-web`), а не в `mneme-core`.
 
-**Controller contract split.** Each resource is declared as a dedicated `*Api`
-interface (e.g. `MeApi`) carrying the method-level mapping annotations
-(`@GetMapping`, `@PostMapping`, …); the `*Controller` class (`@RestController`,
-class-level `@RequestMapping`) implements it. This separates the REST contract
-(method signature + mapping) from the handler logic, and gives later slices a
-single place to regenerate or diff the contract against an OpenAPI spec if that
-becomes useful. Spring resolves the mapping annotations through the interface, so
-no behavior changes — this is a structural convention, not a runtime concern.
-
----
-
-## 8. Authentication
-
-Mechanism for MVP: **a static per-user token**, sent as `Authorization: Bearer
-<token>`. This is a deliberate "simple authentication" choice (per `PROJECT.md` §11);
-no passwords, no hashing, no login flow.
-
-- Token verification and `UserId` extraction happen **only** in `infrastructure/web`,
-  behind the `Authenticator` port (credential → `UserId`, or reject with `401`). The
-  use case receives `UserId` as a parameter; the domain and application never see the
-  token.
-- **Users are seeded** (via migration/config); there is no self-registration endpoint
-  in MVP.
-- **Secrets from the environment** — tokens are never in code or git.
-- The mechanism is a replaceable detail. Upgrading to real authentication does not
-  touch the domain or use cases.
+**Разделение контракта контроллера.** Каждый ресурс объявляется отдельным интерфейсом
+`*Api` (например, `MeApi`), несущим аннотации маппинга на уровне методов
+(`@GetMapping`, `@PostMapping`, …); класс `*Controller` (`@RestController`,
+`@RequestMapping` на уровне класса) его реализует. Это отделяет REST-контракт
+(сигнатура метода + маппинг) от логики обработчика и даёт следующим срезам
+единое место, чтобы перегенерировать контракт или сравнить его со спецификацией OpenAPI, если
+это пригодится. Spring разрешает аннотации маппинга через интерфейс, поэтому
+поведение не меняется — это структурное соглашение, а не вопрос времени выполнения.
 
 ---
 
-## 9. Scheduling (Leitner)
+## 8. Аутентификация
 
-The review algorithm is a **domain Strategy behind an interface**, designed strictly
-for MVP needs (Leitner) — no speculative generalisation for future algorithms (YAGNI).
-The interface is essentially one operation:
+Механизм для MVP: **статический токен на пользователя**, отправляемый как `Authorization: Bearer
+<token>`. Это сознательный выбор "простой аутентификации" (согласно `PROJECT.md` §11);
+никаких паролей, хеширования и процесса входа.
+
+- Проверка токена и извлечение `UserId` происходят **только** в `infrastructure/web`,
+  за портом `Authenticator` (учётные данные → `UserId` или отказ с `401`).
+  Use case получает `UserId` как параметр; domain и application никогда не видят
+  токен.
+- **Пользователи создаются через seed** (миграцией или конфигурацией); эндпоинта
+  самостоятельной регистрации в MVP нет.
+- **Секреты из окружения** — токенов никогда нет в коде или git.
+- Механизм — заменяемая деталь. Переход на настоящую аутентификацию не
+  затрагивает домен и use cases.
+
+---
+
+## 9. Планирование (Лейтнер)
+
+Алгоритм повторения — **доменная Strategy за интерфейсом**, спроектированная строго
+под нужды MVP (Лейтнер) — без умозрительных обобщений для будущих алгоритмов (YAGNI).
+Интерфейс по сути сводится к одной операции:
 
 > `(current ReviewState, Grade) → new ReviewState`
 
-Given where the card is and how it was answered, produce the new box and `dueAt`. No
-SM-2 fields (ease factor, etc.) — they are not part of the interface.
+По тому, где находится карточка и как на неё ответили, он выдаёт новый ящик и `dueAt`.
+Полей SM-2 (ease factor и т. п.) нет — они не входят в интерфейс.
 
-Policy and rules:
+Политика и правила:
 
-- **Global policy**, not per-user configuration.
-- **5 boxes.** Intervals are **configurable** in `application.yaml`, default `1 / 3 / 7
-  / 16 / 30` days. `dueAt = answer time + interval(new box)`.
-- `Correct` → promote to the next box. `Incorrect` (any box) → reset to box 1.
-- **Last box:** `Correct` keeps the card there at the maximum interval — there is no
-  separate "mastered" state in MVP.
-- Parameters reach the domain as **plain values**: `LeitnerStrategy` is constructed
-  with the intervals; a `@ConfigurationProperties` bean in `infrastructure/config`
-  reads them from `application.yaml` and injects them. The domain knows nothing of
-  Spring or YAML.
-
----
-
-## 10. Phase-2 seams (present as boundaries, not built now)
-
-The following are explicitly **not** built in MVP; they are noted so the seams are in
-the right place:
-
-- **Image generation.** In MVP `Image` is only an optional stored attribute (URL or
-  upload). Phase 2 introduces an outbound `ImageGenerator` port whose adapter calls the
-  separate `mneme-ai` service; the core does not depend on it. There is no such port
-  now.
-- **Auth service.** The `Authenticator` port is the seam. Today its implementation is a
-  local token lookup; a future dedicated auth service becomes a new implementation
-  (an HTTP call) of the same port — nothing else changes. Build the core as a single
-  service first; extract auth as a *later* step, after the core works.
-- **Session read model.** See §4 — the `ReviewSessionView` return type is the seam for
-  moving to a dedicated read/CQRS projection if the triggers fire.
-- **Review history.** The `reviews` PK on `card_id` binds one review row per card. If
-  Phase 2 ever needs a history of reviews per card, this PK must become a surrogate key
-  with a unique index elsewhere. Not a concern for MVP.
+- **Глобальная политика**, а не настройка на пользователя.
+- **5 ящиков.** Интервалы **настраиваются** в `application.yaml`, по умолчанию
+  `1 / 3 / 7 / 16 / 30` дней. `dueAt = answer time + interval(new box)`.
+- `Correct` → перевод в следующий ящик. `Incorrect` (любой ящик) → сброс в ящик 1.
+- **Последний ящик:** `Correct` оставляет карточку там с максимальным интервалом —
+  отдельного состояния "выучено" в MVP нет.
+- Параметры доходят до домена как **простые значения**: `LeitnerStrategy` создаётся
+  с интервалами; бин `@ConfigurationProperties` в `infrastructure/config`
+  читает их из `application.yaml` и внедряет. Домен ничего не знает о
+  Spring или YAML.
 
 ---
 
-## 11. Non-functional notes
+## 10. Швы Phase 2 (присутствуют как границы, сейчас не создаются)
 
-- **Latency** (p95 ~100–200 ms) is addressed by the `(owner_id, due_at)` index and
-  simple queries, not by horizontal scaling. Throughput is not a goal (family scale).
-- **Durability.** The card collection must survive. This is an **infrastructure
-  concern**, not application code — there is no `BackupService` in the domain or
-  adapters. It has two halves, both covered: the **schema** is reproducible from Flyway
-  migrations (in git); the **data** is protected by PostgreSQL backups kept **off-host**
-  (self-hosted: scheduled `pg_dump`, optionally WAL archiving for PITR; managed
-  Postgres: provider snapshots + PITR). A backup that has never been restored is not a
-  backup — restore is tested. **No HA / replication / multi-region** (per `PROJECT.md`
-  §8). The mechanism is chosen at deploy time.
+Перечисленное здесь явно **не** создаётся в MVP; это отмечено, чтобы швы оказались в
+правильном месте:
+
+- **Генерация изображений.** В MVP `Image` — лишь необязательный хранимый атрибут (URL или
+  загрузка). Phase 2 вводит исходящий порт `ImageGenerator`, адаптер которого вызывает
+  отдельный сервис `mneme-ai`; ядро от него не зависит. Сейчас такого порта
+  нет.
+- **Сервис аутентификации.** Порт `Authenticator` и есть шов. Сегодня его реализация —
+  локальный поиск токена; будущий выделенный сервис аутентификации станет новой реализацией
+  (HTTP-вызовом) того же порта — больше ничего не меняется. Сначала ядро строится как единый
+  сервис; выделение аутентификации — *более поздний* шаг, после того как ядро заработает.
+- **Read model сессии.** См. §4 — возвращаемый тип `ReviewSessionView` является швом для
+  перехода к выделенной read/CQRS-проекции, если сработают триггеры.
+- **История повторений.** Первичный ключ `reviews` по `card_id` допускает одну строку повторения на карточку.
+  Если в Phase 2 когда-нибудь понадобится история повторений по карточке, этот первичный ключ должен стать
+  суррогатным с уникальным индексом в другом месте. Для MVP это не проблема.
 
 ---
 
-## 12. Open / deferred (decide at implementation time, keep consistent)
+## 11. Нефункциональные заметки
 
-- - **Error responses** — decided: `application/problem+json` (`ProblemDetail`) with a
-    custom `code` property carrying a machine-readable `ErrorCode`. `type` stays
-    `about:blank`. Domain invariant violations are not translated to `4xx`; they surface
-    as `500`, because reaching the domain with invalid data means edge validation failed.
-- **Validation placement** — field-level validation at the edge (Jakarta Validation on
-  request DTOs) and/or via value-object construction in the domain. Decide per field;
-  do not duplicate the same rule in both places without reason.
-- **Session sizing** — currently "all cards due now, ordered by `dueAt`". Add a
-  limit/paging only if a real need appears.
-- **User provisioning details** — seeded users' exact source (migration row vs config)
-  and token issuance procedure.
+- **Задержка** (p95 ~100–200 мс) обеспечивается индексом `(owner_id, due_at)` и
+  простыми запросами, а не горизонтальным масштабированием. Пропускная способность не является целью (семейный масштаб).
+- **Сохранность.** Коллекция карточек должна уцелеть. Это **забота инфраструктуры**,
+  а не прикладного кода — `BackupService` нет ни в домене, ни в
+  адаптерах. У неё две половины, обе закрыты: **схема** воспроизводится из миграций
+  Flyway (в git); **данные** защищены резервными копиями PostgreSQL, которые хранятся **вне хоста**
+  (self-hosted: `pg_dump` по расписанию, по желанию архивирование WAL для PITR; управляемый
+  Postgres: снимки провайдера + PITR). Резервная копия, которую ни разу не восстанавливали, —
+  не резервная копия: восстановление проверяется. **Никаких HA, репликации и multi-region** (согласно `PROJECT.md`
+  §8). Механизм выбирается при развёртывании.
+
+---
+
+## 12. Открытые и отложенные вопросы (решать при реализации, сохраняя согласованность)
+
+- - **Ответы с ошибками** — решено: `application/problem+json` (`ProblemDetail`) с
+    пользовательским свойством `code`, несущим машиночитаемый `ErrorCode`. `type` остаётся
+    `about:blank`. Нарушения доменных инвариантов не преобразуются в `4xx`; они проявляются
+    как `500`, потому что попадание недопустимых данных в домен означает, что валидация на границе не сработала.
+- **Размещение валидации** — валидация полей на границе (Jakarta Validation на
+  DTO запросов) и/или через создание value object в домене. Решается для каждого поля;
+  не дублируй одно и то же правило в обоих местах без причины.
+- **Размер сессии** — сейчас "все карточки, срок которых наступил, упорядоченные по `dueAt`". Лимит
+  и пагинация добавляются, только если появится реальная необходимость.
+- **Детали заведения пользователей** — точный источник seed-пользователей (строка миграции или
+  конфигурация) и процедура выпуска токенов.

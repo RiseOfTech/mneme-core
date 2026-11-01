@@ -1,31 +1,44 @@
 schema: spec-driven
 
 context: |
-  mneme-core is the backend of Mneme: cards, Leitner spaced repetition, public REST API.
-  Java 21, Spring Boot 4.1, PostgreSQL, Gradle (Kotlin DSL). A family-scale MVP.
+  mneme-core — бэкенд Mneme: карточки, интервальное повторение по Лейтнеру, публичный REST API.
+  Java 21, Spring Boot 4.1, PostgreSQL, Gradle (Kotlin DSL). MVP семейного масштаба.
 
-  Before writing any artifact, read:
-  - PROJECT.md: product scope and rejected alternatives. Section 6 lists what is out of
-    MVP scope; do not build it, and do not reintroduce rejected alternatives.
-  - ARCHITECTURE.md: the authoritative design.
-  - AGENTS.md: engineering rules.
+  Перед написанием любого артефакта прочитай:
+  - PROJECT.md: продуктовый объём и отвергнутые альтернативы. Раздел 6 перечисляет то, что не
+    входит в объём MVP; не создавай этого и не возвращай отвергнутые альтернативы.
+  - ARCHITECTURE.md: авторитетный дизайн.
+  - CLAUDE.md: инженерные правила.
 
-  Write all artifacts in English. Image generation, the mneme-ai service, sharing and
-  advanced SRS are Phase 2 and must not appear in any artifact. Identity is owned by
-  mneme-auth; this service only validates its tokens.
+  Пиши все артефакты на русском. Генерация изображений, сервис mneme-ai, шаринг и продвинутые
+  SRS относятся к Phase 2 и не должны появляться ни в одном артефакте. Идентификацией владеет
+  mneme-auth; этот сервис только проверяет его токены.
+
+  На английском остаются элементы, которые читают парсер и валидатор OpenSpec:
+  - `## Purpose`, `## Requirements`, префикс `### Requirement:`;
+  - `SHALL`, `MUST`, `MUST NOT` в тексте требований;
+  - `#### Scenario:`, `**WHEN**`, `**THEN**`, `**AND**`;
+  - `## Why`, `## What Changes`, `## Capabilities`, `### New Capabilities`,
+    `### Modified Capabilities`, `## Impact` в proposal;
+  - `## ADDED/MODIFIED/REMOVED/RENAMED Requirements` в дельтах;
+  - id capability, строки `# <id> Specification`, имена директорий и файлов;
+  - всё, что в обратных кавычках, и блоки кода: HTTP-статусы, значения `code`, пути, поля JSON,
+    заголовки, имена классов и пакетов.
+
+  Названия требований и сценариев пишутся на русском.
 
 rules:
   specs:
-    - Describe observable behaviour only. No class, method or library names.
-    - API scenarios state the HTTP status and, for errors, the machine-readable `code`.
-    - A resource owned by another user and a missing one are indistinguishable. State
-      this explicitly in any scenario that reads or writes an owned resource.
+    - Описывай только наблюдаемое поведение. Никаких имён классов, методов или библиотек.
+    - Сценарии API указывают HTTP-статус, а для ошибок — машиночитаемый `code`.
+    - Ресурс другого пользователя и отсутствующий ресурс неотличимы. Указывай это явно в любом
+      сценарии, который читает или записывает ресурс, имеющий владельца.
   design:
-    - Reference ARCHITECTURE.md by section instead of restating it.
-    - Any decision that departs from or extends ARCHITECTURE.md goes under Decisions, with
-      the reasoning. The human records it in ARCHITECTURE.md after archive.
+    - Ссылайся на разделы ARCHITECTURE.md, а не пересказывай его.
+    - Любое решение, которое отступает от ARCHITECTURE.md или расширяет его, идёт в раздел
+      Decisions с обоснованием. Человек вносит его в ARCHITECTURE.md после архивации.
   tasks:
-    - Order the work domain, then application, then infrastructure, with tests in each layer.
-    - Do not add a file, test or behaviour that tasks.md does not name. Flag it and ask.
-    - Do not edit ARCHITECTURE.md or PROJECT.md in a change unless the human explicitly asks.
-    - Finish with a task that runs `./gradlew clean build`.
+    - Порядок работы — domain, затем application, затем infrastructure, с тестами на каждом слое.
+    - Не добавляй файл, тест или поведение, которых нет в tasks.md. Сообщи об этом и спроси.
+    - Не правь ARCHITECTURE.md или PROJECT.md в рамках change, если человек явно не попросил.
+    - Заверши задачей, которая запускает `./gradlew clean build`.

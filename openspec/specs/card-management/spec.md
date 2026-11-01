@@ -2,105 +2,105 @@
 
 ## Purpose
 
-Lets a user keep a private collection of study cards. A card is a word, its translation
-and a personal association, with an optional image.
+Позволяет пользователю вести личную коллекцию учебных карточек. Карточка — это слово, его перевод и
+личная ассоциация с необязательным изображением.
 
 ## Requirements
 
-### Requirement: Create a card
+### Requirement: Создание карточки
 
-The system SHALL create a card for the caller from a word, translation and association,
-with an optional image URL and optional visibility defaulting to `PRIVATE`. Creating a card
-SHALL also create its review state in the same atomic operation.
+Система SHALL создавать карточку для вызывающего из слова, перевода и ассоциации, с необязательным
+URL изображения и необязательной видимостью, по умолчанию `PRIVATE`. Создание карточки SHALL также
+создавать её состояние повторения в той же атомарной операции.
 
-#### Scenario: Valid card
-- **WHEN** an authenticated caller posts a valid card to `/v1/cards`
-- **THEN** the response is `201` with the created card
-- **AND** the card can be read back by its id
+#### Scenario: Корректная карточка
+- **WHEN** аутентифицированный вызывающий отправляет корректную карточку на `/v1/cards`
+- **THEN** ответ — `201` с созданной карточкой
+- **AND** карточку можно прочитать обратно по её id
 
-#### Scenario: Blank required field
-- **WHEN** the caller posts a card with a blank `word`, `translation` or `association`
-- **THEN** the response is `400` with code `VALIDATION_FAILED`
+#### Scenario: Пустое обязательное поле
+- **WHEN** вызывающий отправляет карточку с пустым `word`, `translation` или `association`
+- **THEN** ответ — `400` с кодом `VALIDATION_FAILED`
 
-### Requirement: Read a card
+### Requirement: Чтение карточки
 
-The system SHALL return a card only to its owner. A card owned by another user MUST be
-indistinguishable from a card that does not exist.
+Система SHALL возвращать карточку только её владельцу. Карточка другого пользователя MUST быть
+неотличима от несуществующей карточки.
 
-#### Scenario: Owner reads a card
-- **WHEN** the owner requests `GET /v1/cards/{id}`
-- **THEN** the response is `200` with the card
+#### Scenario: Владелец читает карточку
+- **WHEN** владелец запрашивает `GET /v1/cards/{id}`
+- **THEN** ответ — `200` с карточкой
 
-#### Scenario: Missing or foreign card
-- **WHEN** the caller requests a card that does not exist or belongs to another user
-- **THEN** the response is `404` with code `CARD_NOT_FOUND`
-- **AND** the two responses are byte-identical
+#### Scenario: Отсутствующая или чужая карточка
+- **WHEN** вызывающий запрашивает карточку, которая не существует или принадлежит другому пользователю
+- **THEN** ответ — `404` с кодом `CARD_NOT_FOUND`
+- **AND** оба ответа побайтно идентичны
 
-### Requirement: List cards
+### Requirement: Список карточек
 
-The system SHALL return all of the caller's cards and only those, newest first, with no
-pagination, filtering or search.
+Система SHALL возвращать все карточки вызывающего и только их, сначала самые новые, без пагинации,
+фильтрации и поиска.
 
-#### Scenario: Caller has cards
-- **WHEN** the caller requests `GET /v1/cards`
-- **THEN** the response is `200` with their cards ordered by creation time, newest first
-- **AND** no other user's card appears
+#### Scenario: У вызывающего есть карточки
+- **WHEN** вызывающий запрашивает `GET /v1/cards`
+- **THEN** ответ — `200` с его карточками, упорядоченными по времени создания, сначала самые новые
+- **AND** карточек других пользователей в ответе нет
 
-#### Scenario: Caller has no cards
-- **WHEN** a caller with no cards requests `GET /v1/cards`
-- **THEN** the response is `200` with an empty array
+#### Scenario: У вызывающего нет карточек
+- **WHEN** вызывающий без карточек запрашивает `GET /v1/cards`
+- **THEN** ответ — `200` с пустым массивом
 
-### Requirement: Replace a card
+### Requirement: Замена карточки
 
-The system SHALL treat `PUT /v1/cards/{id}` as a full replacement of the card's content.
-An absent `imageUrl` MUST clear the image and an absent `visibility` MUST result in
-`PRIVATE`. Replacing a card MUST NOT change its review state.
+Система SHALL рассматривать `PUT /v1/cards/{id}` как полную замену содержимого карточки.
+Отсутствующий `imageUrl` MUST очищать изображение, а отсутствующий `visibility` MUST приводить к
+`PRIVATE`. Замена карточки MUST NOT менять её состояние повторения.
 
-#### Scenario: Owner replaces a card
-- **WHEN** the owner sends a valid replacement
-- **THEN** the response is `200` with the updated card
-- **AND** the card's box and due time are unchanged
+#### Scenario: Владелец заменяет карточку
+- **WHEN** владелец отправляет корректную замену
+- **THEN** ответ — `200` с обновлённой карточкой
+- **AND** ящик и срок карточки не изменились
 
-#### Scenario: Optional fields omitted
-- **WHEN** the replacement has no `imageUrl` and no `visibility`
-- **THEN** the card has no image and its visibility is `PRIVATE`
+#### Scenario: Необязательные поля опущены
+- **WHEN** в замене нет `imageUrl` и `visibility`
+- **THEN** у карточки нет изображения, а её видимость — `PRIVATE`
 
-#### Scenario: Blank required field on replace
-- **WHEN** the replacement has a blank `word`, `translation` or `association`
-- **THEN** the response is `400` with code `VALIDATION_FAILED`
+#### Scenario: Пустое обязательное поле при замене
+- **WHEN** в замене пустой `word`, `translation` или `association`
+- **THEN** ответ — `400` с кодом `VALIDATION_FAILED`
 
-#### Scenario: Replacing a missing or foreign card
-- **WHEN** the caller replaces a card that does not exist or belongs to another user
-- **THEN** the response is `404` with code `CARD_NOT_FOUND`
-- **AND** the two responses are byte-identical
+#### Scenario: Замена отсутствующей или чужой карточки
+- **WHEN** вызывающий заменяет карточку, которая не существует или принадлежит другому пользователю
+- **THEN** ответ — `404` с кодом `CARD_NOT_FOUND`
+- **AND** оба ответа побайтно идентичны
 
-### Requirement: Delete a card
+### Requirement: Удаление карточки
 
-The system SHALL delete a card together with its review state in one atomic operation.
+Система SHALL удалять карточку вместе с её состоянием повторения в одной атомарной операции.
 
-#### Scenario: Owner deletes a card
-- **WHEN** the owner requests `DELETE /v1/cards/{id}`
-- **THEN** the response is `204` with no body
-- **AND** the card and its review state no longer exist
+#### Scenario: Владелец удаляет карточку
+- **WHEN** владелец запрашивает `DELETE /v1/cards/{id}`
+- **THEN** ответ — `204` без тела
+- **AND** карточка и её состояние повторения больше не существуют
 
-#### Scenario: Deleting a missing or foreign card
-- **WHEN** the caller deletes a card that does not exist or belongs to another user
-- **THEN** the response is `404` with code `CARD_NOT_FOUND`
-- **AND** nothing is deleted
-- **AND** the two responses are byte-identical
+#### Scenario: Удаление отсутствующей или чужой карточки
+- **WHEN** вызывающий удаляет карточку, которая не существует или принадлежит другому пользователю
+- **THEN** ответ — `404` с кодом `CARD_NOT_FOUND`
+- **AND** ничего не удаляется
+- **AND** оба ответа побайтно идентичны
 
-### Requirement: Visibility is stored but inert
+### Requirement: Видимость хранится, но ни на что не влияет
 
-The system SHALL store and return each card's visibility. No behaviour MUST depend on it.
+Система SHALL хранить и возвращать видимость каждой карточки. Никакое поведение MUST NOT зависеть от неё.
 
-#### Scenario: Listing ignores visibility
-- **WHEN** a caller owns both private and public cards
-- **THEN** `GET /v1/cards` returns all of them
+#### Scenario: Список игнорирует видимость
+- **WHEN** вызывающий владеет и приватными, и публичными карточками
+- **THEN** `GET /v1/cards` возвращает все эти карточки
 
-### Requirement: Duplicate cards are permitted
+### Requirement: Дубликаты карточек разрешены
 
-The system SHALL accept several cards with the same word or translation for one owner.
+Система SHALL принимать несколько карточек с одним и тем же словом или переводом у одного владельца.
 
-#### Scenario: Same word twice
-- **WHEN** a caller creates a second card with a word they already have
-- **THEN** the response is `201`
+#### Scenario: Одно слово дважды
+- **WHEN** вызывающий создаёт вторую карточку со словом, которое у него уже есть
+- **THEN** ответ — `201`

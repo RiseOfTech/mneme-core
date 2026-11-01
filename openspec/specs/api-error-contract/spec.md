@@ -2,62 +2,62 @@
 
 ## Purpose
 
-Gives clients one error shape to handle, with a stable machine-readable code, and keeps
-internal detail out of responses.
+Даёт клиентам единую форму ошибки со стабильным машиночитаемым кодом и не допускает попадания
+внутренних деталей в ответы.
 
 ## Requirements
 
-### Requirement: Single error shape
+### Requirement: Единая форма ошибки
 
-Error responses SHALL use `application/problem+json` with `status`, `title`, `detail` and a
-`code` property. Clients branch on `code`, whose values are `CARD_NOT_FOUND`,
-`REVIEW_NOT_FOUND`, `VALIDATION_FAILED`, `INTERNAL_ERROR`, `UNAUTHENTICATED` and
+Ответы с ошибкой SHALL использовать `application/problem+json` с полями `status`, `title`, `detail`
+и свойством `code`. Клиенты ветвятся по `code`, значения которого — `CARD_NOT_FOUND`,
+`REVIEW_NOT_FOUND`, `VALIDATION_FAILED`, `INTERNAL_ERROR`, `UNAUTHENTICATED` и
 `METHOD_NOT_ALLOWED`.
 
-#### Scenario: Handled error
-- **WHEN** a request fails with a handled error
-- **THEN** the content type is `application/problem+json`
-- **AND** the body carries the matching `code`
+#### Scenario: Обработанная ошибка
+- **WHEN** запрос завершается обработанной ошибкой
+- **THEN** тип содержимого — `application/problem+json`
+- **AND** тело содержит соответствующий `code`
 
-### Requirement: Validation failures name their fields
+### Requirement: Ошибки валидации называют свои поля
 
-When a request field fails validation, the response SHALL be `400` with code
-`VALIDATION_FAILED` and an `errors` map from request field name to reason. A body that cannot
-be parsed SHALL also be `400` with that code.
+Если поле запроса не проходит валидацию, ответ SHALL быть `400` с кодом `VALIDATION_FAILED` и
+картой `errors` из имени поля запроса в причину. Тело, которое невозможно разобрать, SHALL также
+давать `400` с этим кодом.
 
-#### Scenario: Invalid field
-- **WHEN** a request has a blank `word`
-- **THEN** the response is `400` with code `VALIDATION_FAILED`
-- **AND** `errors` names `word`
+#### Scenario: Недопустимое поле
+- **WHEN** в запросе пустой `word`
+- **THEN** ответ — `400` с кодом `VALIDATION_FAILED`
+- **AND** `errors` называет `word`
 
-#### Scenario: Unparseable body
-- **WHEN** the body is malformed or holds an unknown enum value
-- **THEN** the response is `400` with code `VALIDATION_FAILED`
+#### Scenario: Неразбираемое тело
+- **WHEN** тело некорректно или содержит неизвестное значение перечисления
+- **THEN** ответ — `400` с кодом `VALIDATION_FAILED`
 
-### Requirement: Not-found responses leak nothing
+### Requirement: Ответы "не найдено" ничего не раскрывают
 
-Not-found responses MUST NOT contain the requested id, the request path with that id, or any
-owner information.
+Ответы "не найдено" MUST NOT содержать запрошенный id, путь запроса с этим id или какую-либо
+информацию о владельце.
 
-#### Scenario: Missing card
-- **WHEN** a card is not found
-- **THEN** the body contains no card id
+#### Scenario: Отсутствующая карточка
+- **WHEN** карточка не найдена
+- **THEN** тело не содержит id карточки
 
-### Requirement: Unexpected failures are opaque and logged
+### Requirement: Непредвиденные сбои непрозрачны и логируются
 
-An unexpected failure SHALL produce `500` with code `INTERNAL_ERROR` and a fixed `detail`. The
-response MUST NOT contain the exception message, class name or stack trace, and the failure
-MUST be logged. Violated domain invariants SHALL surface this way rather than as client errors.
+Непредвиденный сбой SHALL приводить к `500` с кодом `INTERNAL_ERROR` и фиксированным `detail`.
+Ответ MUST NOT содержать сообщение исключения, имя класса или стек вызовов, а сбой MUST
+логироваться. Нарушенные инварианты домена SHALL проявляться именно так, а не как ошибки клиента.
 
-#### Scenario: Unexpected exception
-- **WHEN** handling a request throws an unexpected exception
-- **THEN** the response is `500` with code `INTERNAL_ERROR`
-- **AND** the body contains neither the exception message nor its class name
+#### Scenario: Непредвиденное исключение
+- **WHEN** обработка запроса выбрасывает непредвиденное исключение
+- **THEN** ответ — `500` с кодом `INTERNAL_ERROR`
+- **AND** тело не содержит ни сообщения исключения, ни имени его класса
 
-### Requirement: Unsupported method
+### Requirement: Неподдерживаемый метод
 
-The system SHALL answer an unsupported HTTP method with `405` and code `METHOD_NOT_ALLOWED`.
+Система SHALL отвечать на неподдерживаемый HTTP-метод статусом `405` и кодом `METHOD_NOT_ALLOWED`.
 
-#### Scenario: Wrong method on a route
-- **WHEN** a caller sends `GET` to a `POST`-only route
-- **THEN** the response is `405` with code `METHOD_NOT_ALLOWED`
+#### Scenario: Неверный метод на маршруте
+- **WHEN** вызывающий отправляет `GET` на маршрут, поддерживающий только `POST`
+- **THEN** ответ — `405` с кодом `METHOD_NOT_ALLOWED`
