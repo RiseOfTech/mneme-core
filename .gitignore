@@ -9,6 +9,9 @@ build/
 *.ipr
 out/
 
+# GIGA IDE
+.gigaide/
+
 # OS / misc
 .DS_Store
 *.log
