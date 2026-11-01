@@ -2,61 +2,61 @@
 
 ## Purpose
 
-Identifies the caller from an access token issued by `mneme-auth`. Tokens are verified locally
-and offline, so the service keeps working while `mneme-auth` is down.
+Определяет вызывающего по токену доступа, выпущенному `mneme-auth`. Токены проверяются локально и
+офлайн, поэтому сервис продолжает работать, пока `mneme-auth` недоступен.
 
 ## Requirements
 
-### Requirement: Access token validation
+### Requirement: Проверка токена доступа
 
-The system SHALL require a signed token in the `Authorization: Bearer` header for every
-`/v1` request. It SHALL verify the RS256 signature against the configured RSA public key,
-require an unexpired `exp` with at most 60 seconds of clock skew, and require `iss` to equal
-`mneme-auth` and `aud` to equal `mneme-core`. It MUST NOT contact `mneme-auth` to do so. A
-`kid` header MUST NOT cause rejection.
+Система SHALL требовать подписанный токен в заголовке `Authorization: Bearer` для каждого запроса к
+`/v1`. Она SHALL проверять подпись RS256 по настроенному публичному ключу RSA, требовать
+непросроченный `exp` с допуском расхождения часов не более 60 секунд и требовать, чтобы `iss` был
+равен `mneme-auth`, а `aud` был равен `mneme-core`. Для этого она MUST NOT обращаться к `mneme-auth`.
+Заголовок `kid` MUST NOT приводить к отказу.
 
-#### Scenario: Valid token
-- **WHEN** a request carries a valid token
-- **THEN** it is served as the user named by the token's `sub`
+#### Scenario: Действительный токен
+- **WHEN** запрос содержит действительный токен
+- **THEN** он обслуживается как запрос пользователя, указанного в `sub` токена
 
-#### Scenario: Invalid token
-- **WHEN** the token is expired, malformed, signed by another key, or has the wrong issuer or audience
-- **THEN** the response is `401` with code `UNAUTHENTICATED`
+#### Scenario: Недействительный токен
+- **WHEN** токен просрочен, некорректен, подписан другим ключом или содержит неверного издателя или получателя
+- **THEN** ответ — `401` с кодом `UNAUTHENTICATED`
 
-#### Scenario: No token
-- **WHEN** a `/v1` request has no `Authorization` header
-- **THEN** the response is `401` with code `UNAUTHENTICATED`
+#### Scenario: Нет токена
+- **WHEN** в запросе к `/v1` нет заголовка `Authorization`
+- **THEN** ответ — `401` с кодом `UNAUTHENTICATED`
 
-#### Scenario: Failure reason stays hidden
-- **WHEN** authentication fails for any reason
-- **THEN** the response does not reveal the reason
+#### Scenario: Причина отказа остаётся скрытой
+- **WHEN** аутентификация не проходит по любой причине
+- **THEN** ответ не раскрывает причину
 
-### Requirement: Caller identity endpoint
+### Requirement: Эндпоинт идентификации вызывающего
 
-The system SHALL return the authenticated caller's user id at `GET /v1/me`.
+Система SHALL возвращать id пользователя аутентифицированного вызывающего по адресу `GET /v1/me`.
 
-#### Scenario: Authenticated caller
-- **WHEN** a caller with a valid token requests `GET /v1/me`
-- **THEN** the response is `200` with `userId` equal to the token's `sub`
+#### Scenario: Аутентифицированный вызывающий
+- **WHEN** вызывающий с действительным токеном запрашивает `GET /v1/me`
+- **THEN** ответ — `200` с `userId`, равным `sub` токена
 
-### Requirement: Public paths
+### Requirement: Публичные пути
 
-The system SHALL serve the health probe without a token, as well as the OpenAPI document and
-Swagger UI assets where those are enabled.
+Система SHALL отдавать проверку состояния без токена, а также документ OpenAPI и ресурсы Swagger UI
+там, где они включены.
 
-#### Scenario: Health probe
-- **WHEN** `GET /actuator/health` is requested without a token
-- **THEN** the response is `200`
+#### Scenario: Проверка состояния
+- **WHEN** `GET /actuator/health` запрашивается без токена
+- **THEN** ответ — `200`
 
-#### Scenario: API documentation
-- **WHEN** `GET /v3/api-docs` or `GET /swagger-ui/index.html` is requested without a token
-- **THEN** the response is `200`
+#### Scenario: Документация API
+- **WHEN** `GET /v3/api-docs` или `GET /swagger-ui/index.html` запрашивается без токена
+- **THEN** ответ — `200`
 
-### Requirement: Request errors are not masked by authentication
+### Requirement: Ошибки запроса не маскируются аутентификацией
 
-The system SHALL report a request that fails after authentication with its own status, not
-with `401`.
+Система SHALL сообщать о запросе, завершившемся ошибкой после аутентификации, с его собственным
+статусом, а не с `401`.
 
-#### Scenario: Wrong method
-- **WHEN** an authenticated caller uses a method the route does not support
-- **THEN** the response is `405`, not `401`
+#### Scenario: Неверный метод
+- **WHEN** аутентифицированный вызывающий использует метод, который маршрут не поддерживает
+- **THEN** ответ — `405`, а не `401`

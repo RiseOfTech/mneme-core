@@ -2,55 +2,54 @@
 
 ## Purpose
 
-Serves the cards a user should study now. The session is a read-only list; the client walks
-it and grades each card through the review endpoint.
+Отдаёт карточки, которые пользователю следует учить сейчас. Сессия — это список только для чтения;
+клиент проходит по нему и оценивает каждую карточку через эндпоинт повторения.
 
 ## Requirements
 
-### Requirement: Serve due cards
+### Requirement: Выдача карточек с наступившим сроком
 
-The system SHALL return, at `GET /v1/session/cards`, every card of the caller whose due time
-has arrived, ordered by due time ascending, with no limit or pagination. Each entry SHALL
-carry the card id, word, translation, association, image URL, box and due time.
+Система SHALL возвращать по адресу `GET /v1/session/cards` все карточки вызывающего, срок которых
+наступил, упорядоченные по возрастанию срока, без ограничения и пагинации. Каждая запись SHALL
+содержать id карточки, слово, перевод, ассоциацию, URL изображения, ящик и срок.
 
-#### Scenario: Cards are due
-- **WHEN** the caller has cards whose due time has arrived
-- **THEN** the response is `200` with those cards, most overdue first
+#### Scenario: Есть карточки с наступившим сроком
+- **WHEN** у вызывающего есть карточки, срок которых наступил
+- **THEN** ответ — `200` с этими карточками, сначала самые просроченные
 
-#### Scenario: Card has no image
-- **WHEN** a due card has no image
-- **THEN** its `imageUrl` is `null`
+#### Scenario: У карточки нет изображения
+- **WHEN** у карточки с наступившим сроком нет изображения
+- **THEN** её `imageUrl` равен `null`
 
-#### Scenario: Nothing is due
-- **WHEN** none of the caller's cards are due
-- **THEN** the response is `200` with an empty array
+#### Scenario: Нет карточек с наступившим сроком
+- **WHEN** ни у одной карточки вызывающего срок не наступил
+- **THEN** ответ — `200` с пустым массивом
 
-#### Scenario: Another user's cards
-- **WHEN** another user has due cards
-- **THEN** they never appear in the caller's session
+#### Scenario: Карточки другого пользователя
+- **WHEN** у другого пользователя есть карточки с наступившим сроком
+- **THEN** они никогда не появляются в сессии вызывающего
 
-#### Scenario: New card before its first interval
-- **WHEN** a card has just been created
-- **THEN** it is not in the session
+#### Scenario: Новая карточка до первого интервала
+- **WHEN** карточка только что создана
+- **THEN** её нет в сессии
 
-### Requirement: Graded cards leave the session
+### Requirement: Оценённые карточки покидают сессию
 
-The system SHALL exclude a card from the session once grading moves its due time into the
-future.
+Система SHALL исключать карточку из сессии, как только оценивание переносит её срок в будущее.
 
-#### Scenario: Card graded correct
-- **WHEN** a due card is graded `CORRECT`
-- **THEN** it no longer appears in the session
+#### Scenario: Карточка оценена как правильная
+- **WHEN** карточка с наступившим сроком оценена как `CORRECT`
+- **THEN** она больше не появляется в сессии
 
-#### Scenario: Card graded incorrect
-- **WHEN** a due card is graded `INCORRECT`
-- **THEN** it no longer appears in the session
+#### Scenario: Карточка оценена как неправильная
+- **WHEN** карточка с наступившим сроком оценена как `INCORRECT`
+- **THEN** она больше не появляется в сессии
 
-### Requirement: Corrupted data is reported
+### Requirement: О повреждённых данных сообщается
 
-If a due review has no matching card, the system MUST fail the request rather than return a
-shortened session.
+Если у повторения с наступившим сроком нет соответствующей карточки, система MUST завершить запрос
+ошибкой, а не возвращать укороченную сессию.
 
-#### Scenario: Review without a card
-- **WHEN** a due review references a card that cannot be found
-- **THEN** the response is `500` with code `INTERNAL_ERROR`
+#### Scenario: Повторение без карточки
+- **WHEN** повторение с наступившим сроком ссылается на карточку, которую не удаётся найти
+- **THEN** ответ — `500` с кодом `INTERNAL_ERROR`

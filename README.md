@@ -6,7 +6,7 @@ public REST API.
 
 - Product scope: [`PROJECT.md`](PROJECT.md)
 - Architecture: [`ARCHITECTURE.md`](ARCHITECTURE.md)
-- Engineering standards & conventions: [`AGENTS.md`](AGENTS.md)
+- Engineering standards & conventions: [`CLAUDE.md`](CLAUDE.md)
 - Feature specs: [`docs/specs/`](docs/specs/)
 
 ## Stack

@@ -2,31 +2,31 @@
 
 ## Purpose
 
-Lets a browser client on another origin call the API, without opening the production service
-to every origin.
+Позволяет браузерному клиенту с другого origin вызывать API, не открывая production-сервис для всех
+origin.
 
 ## Requirements
 
-### Requirement: Configured origins only
+### Requirement: Только настроенные origin
 
-The system SHALL allow cross-origin access to `/v1/**` only from configured origins. The
-default configuration allows `http://localhost:5173`; the `prod` profile MUST allow no origin
-unless one is configured. Allowed methods SHALL be `GET`, `POST`, `PUT`, `DELETE` and
-`OPTIONS`, and allowed request headers SHALL be `Authorization` and `Content-Type`. Credentials
-MUST NOT be enabled.
+Система SHALL разрешать кросс-доменный доступ к `/v1/**` только с настроенных origin. Конфигурация
+по умолчанию разрешает `http://localhost:5173`; профиль `prod` MUST не разрешать ни один origin,
+если он не настроен. Разрешёнными методами SHALL быть `GET`, `POST`, `PUT`, `DELETE` и `OPTIONS`, а
+разрешёнными заголовками запроса SHALL быть `Authorization` и `Content-Type`. Credentials
+MUST NOT быть включены.
 
-#### Scenario: Preflight from an allowed origin
-- **WHEN** an allowed origin sends a preflight `OPTIONS` without a token
-- **THEN** it succeeds with the allowed origin, methods and headers
+#### Scenario: Preflight с разрешённого origin
+- **WHEN** разрешённый origin отправляет preflight `OPTIONS` без токена
+- **THEN** запрос успешен и содержит разрешённые origin, методы и заголовки
 
-#### Scenario: Disallowed origin
-- **WHEN** an origin that is not configured sends a preflight
-- **THEN** the response does not allow that origin
+#### Scenario: Запрещённый origin
+- **WHEN** origin, который не настроен, отправляет preflight
+- **THEN** ответ не разрешает этот origin
 
-#### Scenario: Authenticated cross-origin request
-- **WHEN** an allowed origin sends a real request with a valid token
-- **THEN** it succeeds and carries the CORS response headers
+#### Scenario: Аутентифицированный кросс-доменный запрос
+- **WHEN** разрешённый origin отправляет реальный запрос с действительным токеном
+- **THEN** запрос успешен и содержит заголовки ответа CORS
 
-#### Scenario: No origins configured
-- **WHEN** no origins are configured
-- **THEN** no origin is allowed
+#### Scenario: Origin не настроены
+- **WHEN** ни один origin не настроен
+- **THEN** ни один origin не разрешён

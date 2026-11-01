@@ -2,55 +2,55 @@
 
 ## Purpose
 
-Moves a card through the Leitner boxes from the outcome of each answer, so the server alone
-decides when the card is next shown.
+Перемещает карточку по ящикам Лейтнера по результату каждого ответа, так что только сервер решает,
+когда карточка будет показана в следующий раз.
 
 ## Requirements
 
-### Requirement: Configurable five-box schedule
+### Requirement: Настраиваемое расписание из пяти ящиков
 
-The system SHALL use five boxes with one global, configurable interval per box, defaulting
-to 1, 3, 7, 16 and 30 days. The service MUST refuse to start with any other number of
-intervals.
+Система SHALL использовать пять ящиков с одним глобальным настраиваемым интервалом на ящик, по
+умолчанию 1, 3, 7, 16 и 30 дней. Сервис MUST отказываться запускаться с любым другим числом
+интервалов.
 
-#### Scenario: Wrong number of intervals
-- **WHEN** the configuration does not hold exactly five intervals
-- **THEN** the service fails to start
+#### Scenario: Неверное число интервалов
+- **WHEN** конфигурация содержит не ровно пять интервалов
+- **THEN** сервис не запускается
 
-### Requirement: Initial review state
+### Requirement: Начальное состояние повторения
 
-The system SHALL place a new card in box 1, due one first interval after creation.
+Система SHALL помещать новую карточку в ящик 1 со сроком через один первый интервал после создания.
 
-#### Scenario: New card
-- **WHEN** a card is created
-- **THEN** its review state is box 1, due at creation time plus the first interval
+#### Scenario: Новая карточка
+- **WHEN** карточка создана
+- **THEN** её состояние повторения — ящик 1, срок равен времени создания плюс первый интервал
 
-### Requirement: Grade an answer
+### Requirement: Оценка ответа
 
-The system SHALL accept a grade of `CORRECT` or `INCORRECT` at `POST /v1/reviews/{cardId}` and
-return the resulting box and due time. The client MUST NOT be able to set the box or due time
-directly. Grades MUST NOT be stored, and grading MUST NOT change the card's content.
+Система SHALL принимать оценку `CORRECT` или `INCORRECT` по адресу `POST /v1/reviews/{cardId}` и
+возвращать получившиеся ящик и срок. Клиент MUST NOT иметь возможности задавать ящик или срок
+напрямую. Оценки MUST NOT сохраняться, а оценивание MUST NOT менять содержимое карточки.
 
-#### Scenario: Correct answer
-- **WHEN** a card in a box below 5 is graded `CORRECT`
-- **THEN** the response is `200` with the next box
-- **AND** the due time is the answer time plus that box's interval
+#### Scenario: Правильный ответ
+- **WHEN** карточка в ящике ниже 5 оценивается как `CORRECT`
+- **THEN** ответ — `200` со следующим ящиком
+- **AND** срок равен времени ответа плюс интервал этого ящика
 
-#### Scenario: Correct answer in the last box
-- **WHEN** a card in box 5 is graded `CORRECT`
-- **THEN** the card stays in box 5
-- **AND** the due time is the answer time plus the last interval
+#### Scenario: Правильный ответ в последнем ящике
+- **WHEN** карточка в ящике 5 оценивается как `CORRECT`
+- **THEN** карточка остаётся в ящике 5
+- **AND** срок равен времени ответа плюс последний интервал
 
-#### Scenario: Incorrect answer
-- **WHEN** a card in any box is graded `INCORRECT`
-- **THEN** the card moves to box 1
-- **AND** the due time is the answer time plus the first interval
+#### Scenario: Неправильный ответ
+- **WHEN** карточка в любом ящике оценивается как `INCORRECT`
+- **THEN** карточка перемещается в ящик 1
+- **AND** срок равен времени ответа плюс первый интервал
 
-#### Scenario: Missing or unrecognised grade
-- **WHEN** the grade is absent or is not a known value
-- **THEN** the response is `400` with code `VALIDATION_FAILED`
+#### Scenario: Отсутствующая или нераспознанная оценка
+- **WHEN** оценка отсутствует или не является известным значением
+- **THEN** ответ — `400` с кодом `VALIDATION_FAILED`
 
-#### Scenario: Grading a missing or foreign card
-- **WHEN** the caller grades a card that does not exist or belongs to another user
-- **THEN** the response is `404` with code `REVIEW_NOT_FOUND`
-- **AND** the two responses are byte-identical
+#### Scenario: Оценка отсутствующей или чужой карточки
+- **WHEN** вызывающий оценивает карточку, которая не существует или принадлежит другому пользователю
+- **THEN** ответ — `404` с кодом `REVIEW_NOT_FOUND`
+- **AND** оба ответа побайтно идентичны
