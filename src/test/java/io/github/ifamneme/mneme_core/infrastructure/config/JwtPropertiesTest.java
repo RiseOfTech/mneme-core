@@ -9,18 +9,19 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
 
+import io.github.ifamneme.mneme_core.support.JwtTestTokens;
+
 class JwtPropertiesTest {
 
 	private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
 			.withUserConfiguration(TestConfig.class);
 
-	// Regression test: app.jwt.public-key binds to a Resource, not raw PEM text, so the
-	// classpath location application.yaml defaults to must actually resolve to real
-	// content - a wrong/missing path here previously surfaced as an opaque
-	// "Illegal base64 character" failure at JwtDecoder construction time instead.
+	// Regression test: app.jwt.public-key binds to a Resource, not raw PEM text - binding
+	// it as text previously surfaced as an opaque "Illegal base64 character" failure at
+	// JwtDecoder construction time. Uses a generated key: *.pem files are not in git.
 	@Test
-	void whenPropertyPointsAtClasspathKey_resolvesToRealPemContent() {
-		contextRunner.withPropertyValues("app.jwt.public-key=classpath:keys/mneme-auth-public.pem").run(context -> {
+	void whenPropertyPointsAtKeyLocation_resolvesToRealPemContent() {
+		contextRunner.withPropertyValues("app.jwt.public-key=" + JwtTestTokens.publicKeyLocation()).run(context -> {
 			var resource = context.getBean(JwtProperties.class).getPublicKey();
 			assertThat(resource.exists()).isTrue();
 			try (var in = resource.getInputStream()) {
